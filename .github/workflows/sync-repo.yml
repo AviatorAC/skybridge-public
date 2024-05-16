@@ -22,12 +22,15 @@ jobs:
           path: private
           token: ${{ secrets.PURPLEWOLF_TOKEN }}
 
-      - uses: fregante/setup-git-user@v2
-
       - name: Setup node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Setup git user
+        run: |
+          git config --global user.name "Purple Wolf[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Run sync script
         run: |
