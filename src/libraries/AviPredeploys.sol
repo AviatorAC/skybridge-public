@@ -8,6 +8,8 @@ library AviPredeploys {
 
     // https://docs.optimism.io/chain/addresses
     // TODO: update these to mainnet addresses when time comes
+    // purplewolf said hi trying to make ci work
+
     address internal constant L1_CROSS_DOMAIN_MESSENGER = 0xC34855F4De64F1840e5686e64278da901e261f20;
     address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
 }
