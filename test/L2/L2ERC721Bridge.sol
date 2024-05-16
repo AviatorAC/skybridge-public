@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.15;
+
+import { Predeploys } from "@eth-optimism/contracts-bedrock/src/libraries/Predeploys.sol";
+
+import { CommonTest } from 'test/__setup__/CommonTest.sol';
+import { MessengerHolder } from 'test/__setup__/MessengerHolder.sol';
+
+import { L2AviERC721Bridge } from "src/L2/L2AviERC721Bridge.sol";
+import { AviPredeploys } from "src/libraries/AviPredeploys.sol";
+
+contract L2ERC721BridgeTest is CommonTest, MessengerHolder {
+    L2AviERC721Bridge l2Bridge;
+
+    constructor() mockGod {
+        l2Bridge = new L2AviERC721Bridge(AviPredeploys.L1_AVI_STANDARD_BRIDGE);
+    }
+
+    function test() public override(CommonTest, MessengerHolder) {}
+
+    function test_L2BridgeIsNeverPaused() public {
+        assertEq(l2Bridge.paused(), false);
+    }
+
+    function test_RevertWhenTryingToFinalizeBridgingERC721ToSelf() public mockGod {
+        vm.expectRevert("L2ERC721Bridge: local token cannot be self");
+
+        l2Bridge.finalizeBridgeERC721(address(l2Bridge), nftL1, god, god, 1, "");
+    }
+
+    function test_RevertWhenTryingToFinalizeBridgingNonERC721() public mockGod {
+        vm.expectRevert("L2ERC721Bridge: local token interface is not compliant");
+
+        l2Bridge.finalizeBridgeERC721(testTokenAddrL1, nftL1, god, god, 1, "");
+    }
+
+    function test_RevertWhenTryingToFinalizeBridgingWrongRemoteToken() public mockGod {
+        vm.expectRevert("L2ERC721Bridge: wrong remote token for Optimism Mintable ERC721 local token");
+
+        l2Bridge.finalizeBridgeERC721(nftL1, nftL1, god, god, 1, "");
+    }
+
+    function test_FinalizeBridgeERC721() public mockGod {
+        l2Bridge.finalizeBridgeERC721(nftL2, nftL1, god, god, 1, "");
+    }
+
+    function test_RevertWhenTryingToBridgeERC721WithNullRemoteToken() public mockGod {
+        vm.expectRevert("L2ERC721Bridge: remote token cannot be address(0)");
+
+        l2Bridge.bridgeERC721(nftL2, address(0), 1, "");
+    }
+
+    function test_RevertWhenTryingToBridgeNFTThatCallerDoesNotOwn() public mockGod {
+        nftL2Contract.safeMint(bob, 1);
+        vm.expectRevert("L2ERC721Bridge: Withdrawal is not being initiated by NFT owner");
+
+        l2Bridge.bridgeERC721(nftL2, nftL1, 1, "");
+    }
+
+    function test_RevertWhenRemoteTokenDoesNotMatchLocalToken() public mockGod {
+        nftL2Contract.safeMint(god, 1);
+        vm.expectRevert("L2ERC721Bridge: remote token does not match given value");
+
+        l2Bridge.bridgeERC721(nftL2, nftL2, 1, "");
+    }
+
+    function test_BridgeERC721() public mockGod {
+        nftL2Contract.safeMint(god, 1);
+
+        l2Bridge.bridgeERC721(nftL2, nftL1, 1, "");
+    }
+}

@@ -1,0 +1,10 @@
+{
+	"recommendations": [
+		"NomicFoundation.hardhat-solidity",
+		"esbenp.prettier-vscode",
+		"dbaeumer.vscode-eslint",
+		"tamasfe.even-better-toml",
+		"christian-kohler.npm-intellisense",
+		"christian-kohler.path-intellisense"
+	]
+}

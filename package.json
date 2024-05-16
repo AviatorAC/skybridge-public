@@ -1,0 +1,37 @@
+{
+	"name": "@aviator/root",
+	"private": true,
+	"scripts": {
+		"test": "forge test",
+		"coverage:summary": "forge coverage",
+		"coverage:full": "forge coverage && forge coverage --report debug > results.txt",
+		"coverage:lcov": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
+	},
+	"resolutions": {
+		"safe-stable-stringify@npm:^2.3.1": "patch:safe-stable-stringify@npm%3A2.4.3#~/.yarn/patches/safe-stable-stringify-npm-2.4.3-d895741b40.patch",
+		"web3-eth-accounts@npm:^4.1.1": "patch:web3-eth-accounts@npm%3A4.1.1#~/.yarn/patches/web3-eth-accounts-npm-4.1.1-9995d5da64.patch",
+		"web3-eth-accounts@npm:^4.1.0": "patch:web3-eth-accounts@npm%3A4.1.1#~/.yarn/patches/web3-eth-accounts-npm-4.1.1-9995d5da64.patch"
+	},
+	"devDependencies": {
+		"@nomicfoundation/hardhat-chai-matchers": "^2.0.4",
+		"@nomicfoundation/hardhat-ethers": "^3.0.5",
+		"@nomicfoundation/hardhat-foundry": "^1.1.1",
+		"@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+		"@nomicfoundation/hardhat-toolbox": "^4.0.0",
+		"@nomicfoundation/hardhat-verify": "^2.0.0",
+		"solidity-coverage": "^0.8.11"
+	},
+	"dependencies": {
+		"@eth-optimism/contracts-bedrock": "patch:@eth-optimism/contracts-bedrock@https%3A//gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1#~/.yarn/patches/@eth-optimism-contracts-bedrock-https-e91c1d4a6a.patch",
+		"@openzeppelin/contracts": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?ecd2ca2cd7cac116f7a37d0e474bbb3d7d5e1c4d",
+		"@openzeppelin/contracts-upgradeable": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?0a2cb9a445c365870ed7a8ab461b12acf3e27d63",
+		"@rari-capital/solmate": "transmissions11/solmate#8f9b23f8838670afda0fd8983f2c41e8037ae6bc",
+		"@safe-global/safe-smart-account": "https://gitpkg.now.sh/safe-global/safe-smart-account?e870f514ad34cd9654c72174d6d4a839e3c6639f",
+		"clones-with-immutable-args": "^1.1.2"
+	},
+	"packageManager": "yarn@4.2.2",
+	"volta": {
+		"node": "20.13.1",
+		"yarn": "4.2.2"
+	}
+}

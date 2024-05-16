@@ -1,0 +1,19 @@
+{
+	"solidity.compileUsingRemoteVersion": "v0.8.15",
+	"solidity.packageDefaultDependenciesContractsDirectory": "contracts",
+	"discord.enabled": false,
+	"eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+	"eslint.experimental.useFlatConfig": true,
+	"eslint.workingDirectories": [{ "directory": "${workspaceFolder}" }, { "pattern": "./backend/" }],
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+	"editor.codeActionsOnSave": {
+		"source.organizeImports": "never",
+		"source.fixAll.eslint": "explicit",
+		"source.fixAll": "explicit"
+	},
+	"editor.trimAutoWhitespace": false,
+	"testing.automaticallyOpenPeekView": "never",
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true
+}

@@ -1,0 +1,1103 @@
+diff --git a/src/EAS/EAS.sol b/src/EAS/EAS.sol
+index f4872eeed26e871426cd717ab0f0ec4ccb522a01..417cdb062ac34b59a5af9f2d45fedc124bed4b5d 100644
+--- a/src/EAS/EAS.sol
++++ b/src/EAS/EAS.sol
+@@ -2,10 +2,10 @@
+ pragma solidity 0.8.19;
+ 
+ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { EIP1271Verifier } from "src/EAS/eip1271/EIP1271Verifier.sol";
+-import { ISchemaResolver } from "src/EAS/resolver/ISchemaResolver.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { EIP1271Verifier } from "../EAS/eip1271/EIP1271Verifier.sol";
++import { ISchemaResolver } from "../EAS/resolver/ISchemaResolver.sol";
+ 
+ import {
+     AccessDenied,
+@@ -16,7 +16,7 @@ import {
+     NotFound,
+     NO_EXPIRATION_TIME,
+     uncheckedInc
+-} from "src/EAS/Common.sol";
++} from "../EAS/Common.sol";
+ 
+ import {
+     Attestation,
+@@ -31,9 +31,9 @@ import {
+     MultiRevocationRequest,
+     RevocationRequest,
+     RevocationRequestData
+-} from "src/EAS/IEAS.sol";
++} from "../EAS/IEAS.sol";
+ 
+-import { ISchemaRegistry, SchemaRecord } from "src/EAS/ISchemaRegistry.sol";
++import { ISchemaRegistry, SchemaRecord } from "../EAS/ISchemaRegistry.sol";
+ 
+ struct AttestationsResult {
+     uint256 usedValue; // Total ETH amount that was sent to resolvers.
+diff --git a/src/EAS/IEAS.sol b/src/EAS/IEAS.sol
+index 8a186ad274834c39fb83b31cc5f4fc3ecd0e775d..9d2ad4425201f77605a26ca1f3fe1898256d1ab1 100644
+--- a/src/EAS/IEAS.sol
++++ b/src/EAS/IEAS.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.0;
+ 
+-import { ISchemaRegistry } from "src/EAS/ISchemaRegistry.sol";
+-import { Attestation, Signature } from "src/EAS/Common.sol";
++import { ISchemaRegistry } from "../EAS/ISchemaRegistry.sol";
++import { Attestation, Signature } from "../EAS/Common.sol";
+ 
+ /// @dev A struct representing the arguments of the attestation request.
+ struct AttestationRequestData {
+diff --git a/src/EAS/ISchemaRegistry.sol b/src/EAS/ISchemaRegistry.sol
+index 1590e7a21f76d52a92b2bf801fba0ea5ea26d09b..ae719ee5f892698447923893584bbc68614af3ab 100644
+--- a/src/EAS/ISchemaRegistry.sol
++++ b/src/EAS/ISchemaRegistry.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.0;
+ 
+-import { ISchemaResolver } from "src/EAS/resolver/ISchemaResolver.sol";
++import { ISchemaResolver } from "../EAS/resolver/ISchemaResolver.sol";
+ 
+ /// @title A struct representing a record for a submitted schema.
+ struct SchemaRecord {
+diff --git a/src/EAS/SchemaRegistry.sol b/src/EAS/SchemaRegistry.sol
+index e6f5ee3c4d90ecb499320eeb314fe33ab512e1c4..129ac1fb82b0415a6b9e6742101b601dd27531e1 100644
+--- a/src/EAS/SchemaRegistry.sol
++++ b/src/EAS/SchemaRegistry.sol
+@@ -1,10 +1,10 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.19;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { ISchemaResolver } from "src/EAS/resolver/ISchemaResolver.sol";
+-import { EMPTY_UID, MAX_GAP } from "src/EAS/Common.sol";
+-import { ISchemaRegistry, SchemaRecord } from "src/EAS/ISchemaRegistry.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { ISchemaResolver } from "../EAS/resolver/ISchemaResolver.sol";
++import { EMPTY_UID, MAX_GAP } from "../EAS/Common.sol";
++import { ISchemaRegistry, SchemaRecord } from "../EAS/ISchemaRegistry.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x4200000000000000000000000000000000000020
+diff --git a/src/EAS/eip1271/EIP1271Verifier.sol b/src/EAS/eip1271/EIP1271Verifier.sol
+index 2b9ba7191fb2159edf6344aee6d6adadd5252a49..18cb89a700b84a244983c118d0ff9f37a77ecf82 100644
+--- a/src/EAS/eip1271/EIP1271Verifier.sol
++++ b/src/EAS/eip1271/EIP1271Verifier.sol
+@@ -10,7 +10,7 @@ import {
+     DelegatedAttestationRequest,
+     DelegatedRevocationRequest,
+     RevocationRequestData
+-} from "src/EAS/IEAS.sol";
++} from "../../EAS/IEAS.sol";
+ 
+ import {
+     DeadlineExpired,
+@@ -20,7 +20,7 @@ import {
+     MAX_GAP,
+     stringToBytes32,
+     bytes32ToString
+-} from "src/EAS/Common.sol";
++} from "../../EAS/Common.sol";
+ 
+ /// @title EIP1271Verifier
+ /// @notice EIP1271Verifier typed signatures verifier for EAS delegated attestations.
+diff --git a/src/EAS/resolver/SchemaResolver.sol b/src/EAS/resolver/SchemaResolver.sol
+index 4e51c3e89c0d7f12881fd66ce2fea621872f250e..558e0af1905dbbb9101593e746657ffcc30e0dc3 100644
+--- a/src/EAS/resolver/SchemaResolver.sol
++++ b/src/EAS/resolver/SchemaResolver.sol
+@@ -1,10 +1,10 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.19;
+ 
+-import { IEAS, Attestation } from "src/EAS/IEAS.sol";
+-import { AccessDenied, InvalidEAS, InvalidLength, uncheckedInc } from "src/EAS/Common.sol";
++import { IEAS, Attestation } from "../../EAS/IEAS.sol";
++import { AccessDenied, InvalidEAS, InvalidLength, uncheckedInc } from "../../EAS/Common.sol";
+ 
+-import { ISchemaResolver } from "src/EAS/resolver/ISchemaResolver.sol";
++import { ISchemaResolver } from "../../EAS/resolver/ISchemaResolver.sol";
+ 
+ /// @title SchemaResolver
+ /// @notice The base schema resolver contract.
+diff --git a/src/L1/DelayedVetoable.sol b/src/L1/DelayedVetoable.sol
+index 8a1f08cb0ef3834259f3bc4853b898d69b2417b7..60fc46b09e09a4d97e83a9027ae270b636798751 100644
+--- a/src/L1/DelayedVetoable.sol
++++ b/src/L1/DelayedVetoable.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @title DelayedVetoable
+ /// @notice This contract enables a delay before a call is forwarded to a target contract, and during the delay period
+diff --git a/src/L1/L1CrossDomainMessenger.sol b/src/L1/L1CrossDomainMessenger.sol
+index 159bdb19c00781667a4d2a084dfeab138500c490..3686edf8fd2746d7682ffe9a1f0354a5a1f257cb 100644
+--- a/src/L1/L1CrossDomainMessenger.sol
++++ b/src/L1/L1CrossDomainMessenger.sol
+@@ -1,11 +1,11 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { OptimismPortal } from "src/L1/OptimismPortal.sol";
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { OptimismPortal } from "../L1/OptimismPortal.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { SuperchainConfig } from "../L1/SuperchainConfig.sol";
+ 
+ /// @custom:proxied
+ /// @title L1CrossDomainMessenger
+diff --git a/src/L1/L1ERC721Bridge.sol b/src/L1/L1ERC721Bridge.sol
+index 2b46159ba7daff1e629c1bed8f5d47819595c4a3..9427a6f737c5369b22a2c3bdc36293782ed62ca6 100644
+--- a/src/L1/L1ERC721Bridge.sol
++++ b/src/L1/L1ERC721Bridge.sol
+@@ -1,14 +1,14 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ERC721Bridge } from "src/universal/ERC721Bridge.sol";
++import { ERC721Bridge } from "../universal/ERC721Bridge.sol";
+ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+-import { L2ERC721Bridge } from "src/L2/L2ERC721Bridge.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { Constants } from "src/libraries/Constants.sol";
+-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
++import { L2ERC721Bridge } from "../L2/L2ERC721Bridge.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { Constants } from "../libraries/Constants.sol";
++import { SuperchainConfig } from "../L1/SuperchainConfig.sol";
+ 
+ /// @title L1ERC721Bridge
+ /// @notice The L1 ERC721 bridge is a contract which works together with the L2 ERC721 bridge to
+diff --git a/src/L1/L1StandardBridge.sol b/src/L1/L1StandardBridge.sol
+index a5d37c55354f25f65d3eaacafd64192d4cbafe11..280e98af248e17e5e125955dce6a5b15f7298540 100644
+--- a/src/L1/L1StandardBridge.sol
++++ b/src/L1/L1StandardBridge.sol
+@@ -1,12 +1,12 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { StandardBridge } from "src/universal/StandardBridge.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { StandardBridge } from "../universal/StandardBridge.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { SuperchainConfig } from "../L1/SuperchainConfig.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @custom:proxied
+ /// @title L1StandardBridge
+diff --git a/src/L1/L2OutputOracle.sol b/src/L1/L2OutputOracle.sol
+index 0b9a6894c9fba43928c6b4b292628a2f04e7fc78..31fdc02d85c6f63bea8e67737e4c2a7b26293f6f 100644
+--- a/src/L1/L2OutputOracle.sol
++++ b/src/L1/L2OutputOracle.sol
+@@ -2,9 +2,9 @@
+ pragma solidity 0.8.15;
+ 
+ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Types } from "src/libraries/Types.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Types } from "../libraries/Types.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @custom:proxied
+ /// @title L2OutputOracle
+diff --git a/src/L1/OptimismPortal.sol b/src/L1/OptimismPortal.sol
+index 11701ea3ee5c23376791dd29511f0a4971544e7d..82f5480eb2617bea69d16fd203db5837569c4c76 100644
+--- a/src/L1/OptimismPortal.sol
++++ b/src/L1/OptimismPortal.sol
+@@ -2,18 +2,18 @@
+ pragma solidity 0.8.15;
+ 
+ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+-import { SafeCall } from "src/libraries/SafeCall.sol";
+-import { L2OutputOracle } from "src/L1/L2OutputOracle.sol";
+-import { SystemConfig } from "src/L1/SystemConfig.sol";
+-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
+-import { Constants } from "src/libraries/Constants.sol";
+-import { Types } from "src/libraries/Types.sol";
+-import { Hashing } from "src/libraries/Hashing.sol";
+-import { SecureMerkleTrie } from "src/libraries/trie/SecureMerkleTrie.sol";
+-import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
+-import { ResourceMetering } from "src/L1/ResourceMetering.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { SafeCall } from "../libraries/SafeCall.sol";
++import { L2OutputOracle } from "../L1/L2OutputOracle.sol";
++import { SystemConfig } from "../L1/SystemConfig.sol";
++import { SuperchainConfig } from "../L1/SuperchainConfig.sol";
++import { Constants } from "../libraries/Constants.sol";
++import { Types } from "../libraries/Types.sol";
++import { Hashing } from "../libraries/Hashing.sol";
++import { SecureMerkleTrie } from "../libraries/trie/SecureMerkleTrie.sol";
++import { AddressAliasHelper } from "../vendor/AddressAliasHelper.sol";
++import { ResourceMetering } from "../L1/ResourceMetering.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @custom:proxied
+ /// @title OptimismPortal
+diff --git a/src/L1/ProtocolVersions.sol b/src/L1/ProtocolVersions.sol
+index d3f06b27730b6b89063e8dfeb984fa9a188256a9..6f524fe29c7e931825ddff0c7776efec342d1fae 100644
+--- a/src/L1/ProtocolVersions.sol
++++ b/src/L1/ProtocolVersions.sol
+@@ -2,9 +2,9 @@
+ pragma solidity 0.8.15;
+ 
+ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Storage } from "src/libraries/Storage.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Storage } from "../libraries/Storage.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @notice ProtocolVersion is a numeric identifier of the protocol version.
+ type ProtocolVersion is uint256;
+diff --git a/src/L1/ResourceMetering.sol b/src/L1/ResourceMetering.sol
+index 3df7b69d02fea18fc6546a5f423a99804c6aca72..576bfeeeef8581b0855fb0f0dffce4f40f14c4dd 100644
+--- a/src/L1/ResourceMetering.sol
++++ b/src/L1/ResourceMetering.sol
+@@ -3,8 +3,8 @@ pragma solidity 0.8.15;
+ 
+ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+-import { Burn } from "src/libraries/Burn.sol";
+-import { Arithmetic } from "src/libraries/Arithmetic.sol";
++import { Burn } from "../libraries/Burn.sol";
++import { Arithmetic } from "../libraries/Arithmetic.sol";
+ 
+ /// @custom:upgradeable
+ /// @title ResourceMetering
+diff --git a/src/L1/SuperchainConfig.sol b/src/L1/SuperchainConfig.sol
+index 0f30013ee38ad14b659a42c428fe4b67cd5e3337..e80f4ded747adfe55cc139aac5faf292afb69f51 100644
+--- a/src/L1/SuperchainConfig.sol
++++ b/src/L1/SuperchainConfig.sol
+@@ -2,8 +2,8 @@
+ pragma solidity 0.8.15;
+ 
+ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Storage } from "src/libraries/Storage.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Storage } from "../libraries/Storage.sol";
+ 
+ /// @custom:audit none This contracts is not yet audited.
+ /// @title SuperchainConfig
+diff --git a/src/L1/SystemConfig.sol b/src/L1/SystemConfig.sol
+index 9dc026eaf5d00605d54aca8a18101540ec52a3e5..612966a7406a1e5c2cf577321b2e327f7032841f 100644
+--- a/src/L1/SystemConfig.sol
++++ b/src/L1/SystemConfig.sol
+@@ -2,10 +2,10 @@
+ pragma solidity 0.8.15;
+ 
+ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { ResourceMetering } from "src/L1/ResourceMetering.sol";
+-import { Storage } from "src/libraries/Storage.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { ResourceMetering } from "../L1/ResourceMetering.sol";
++import { Storage } from "../libraries/Storage.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @title SystemConfig
+ /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
+diff --git a/src/L2/BaseFeeVault.sol b/src/L2/BaseFeeVault.sol
+index e5313d93ace4efa9d953c5cc47ebe82a9c46c840..14e285da5a2861e26e653351b43d89ef2702a34c 100644
+--- a/src/L2/BaseFeeVault.sol
++++ b/src/L2/BaseFeeVault.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { FeeVault } from "src/universal/FeeVault.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { FeeVault } from "../universal/FeeVault.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x4200000000000000000000000000000000000019
+diff --git a/src/L2/CrossDomainOwnable.sol b/src/L2/CrossDomainOwnable.sol
+index 3b532f58900162c81e6336934d294d8300c577bc..9df5136f43c482511eabc8e721fe74e8f2d8199a 100644
+--- a/src/L2/CrossDomainOwnable.sol
++++ b/src/L2/CrossDomainOwnable.sol
+@@ -2,7 +2,7 @@
+ pragma solidity ^0.8.0;
+ 
+ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+-import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
++import { AddressAliasHelper } from "../vendor/AddressAliasHelper.sol";
+ 
+ /// @title CrossDomainOwnable
+ /// @notice This contract extends the OpenZeppelin `Ownable` contract for L2 contracts to be owned
+diff --git a/src/L2/CrossDomainOwnable2.sol b/src/L2/CrossDomainOwnable2.sol
+index ce14229c9b51edee7e8b6fe865e5c536a56ba354..40637369cb7fdc35eddf47689d0971ca151be024 100644
+--- a/src/L2/CrossDomainOwnable2.sol
++++ b/src/L2/CrossDomainOwnable2.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.0;
+ 
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { L2CrossDomainMessenger } from "src/L2/L2CrossDomainMessenger.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { L2CrossDomainMessenger } from "../L2/L2CrossDomainMessenger.sol";
+ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+ 
+ /// @title CrossDomainOwnable2
+diff --git a/src/L2/CrossDomainOwnable3.sol b/src/L2/CrossDomainOwnable3.sol
+index 2e4ef7a17c2a5f183a16aac7d7f3c22d9438bc6f..d95faf00010592c9477b05bd076d64c038a115ce 100644
+--- a/src/L2/CrossDomainOwnable3.sol
++++ b/src/L2/CrossDomainOwnable3.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.0;
+ 
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { L2CrossDomainMessenger } from "src/L2/L2CrossDomainMessenger.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { L2CrossDomainMessenger } from "../L2/L2CrossDomainMessenger.sol";
+ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+ 
+ /// @title CrossDomainOwnable3
+diff --git a/src/L2/GasPriceOracle.sol b/src/L2/GasPriceOracle.sol
+index 30ab88c19d2486a3b8a480d3c22455f9454d1c55..c6928dbb7b70dbf8b2b7a5a8ccb5d0e6cd9be7fd 100644
+--- a/src/L2/GasPriceOracle.sol
++++ b/src/L2/GasPriceOracle.sol
+@@ -1,9 +1,9 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { L1Block } from "src/L2/L1Block.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { L1Block } from "../L2/L1Block.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x420000000000000000000000000000000000000F
+diff --git a/src/L2/L1Block.sol b/src/L2/L1Block.sol
+index 7ed45ce0d4b65d745dd262f6dc1e2a3a62a199cb..4e8f098f0a7ea3e7deb0884c6ca0e86ffcf4afb5 100644
+--- a/src/L2/L1Block.sol
++++ b/src/L2/L1Block.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x4200000000000000000000000000000000000015
+diff --git a/src/L2/L1FeeVault.sol b/src/L2/L1FeeVault.sol
+index b815dbfbbf79ab58e79e5c1df07dd64b3e868465..b095187bb1eda53049f09faafdd6544db67ef395 100644
+--- a/src/L2/L1FeeVault.sol
++++ b/src/L2/L1FeeVault.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { FeeVault } from "src/universal/FeeVault.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { FeeVault } from "../universal/FeeVault.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x420000000000000000000000000000000000001A
+diff --git a/src/L2/L2CrossDomainMessenger.sol b/src/L2/L2CrossDomainMessenger.sol
+index cf428aa5d8bc5461d15741ba8b04bce116a94b6a..8692546ca024f47d62691826b8317e805e820f70 100644
+--- a/src/L2/L2CrossDomainMessenger.sol
++++ b/src/L2/L2CrossDomainMessenger.sol
+@@ -1,12 +1,12 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { L2ToL1MessagePasser } from "src/L2/L2ToL1MessagePasser.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { AddressAliasHelper } from "../vendor/AddressAliasHelper.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { L2ToL1MessagePasser } from "../L2/L2ToL1MessagePasser.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x4200000000000000000000000000000000000007
+diff --git a/src/L2/L2ERC721Bridge.sol b/src/L2/L2ERC721Bridge.sol
+index 61f7bd785f6bb78ea9dd65a9d0595a358958318a..7fadbb6f2f5729ad1b410169cff1b78b0ffa50b9 100644
+--- a/src/L2/L2ERC721Bridge.sol
++++ b/src/L2/L2ERC721Bridge.sol
+@@ -1,14 +1,14 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ERC721Bridge } from "src/universal/ERC721Bridge.sol";
++import { ERC721Bridge } from "../universal/ERC721Bridge.sol";
+ import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+-import { L1ERC721Bridge } from "src/L1/L1ERC721Bridge.sol";
+-import { IOptimismMintableERC721 } from "src/universal/IOptimismMintableERC721.sol";
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Constants } from "src/libraries/Constants.sol";
+-import { Predeploys } from "src/libraries/Predeploys.sol";
++import { L1ERC721Bridge } from "../L1/L1ERC721Bridge.sol";
++import { IOptimismMintableERC721 } from "../universal/IOptimismMintableERC721.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Constants } from "../libraries/Constants.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
+ 
+ /// @title L2ERC721Bridge
+ /// @notice The L2 ERC721 bridge is a contract which works together with the L1 ERC721 bridge to
+diff --git a/src/L2/L2StandardBridge.sol b/src/L2/L2StandardBridge.sol
+index 8b638a6f488abc277800da36ee3eb4f4871b0649..0ece84ac99db6d3bd86ce8140c006e80fc873e5c 100644
+--- a/src/L2/L2StandardBridge.sol
++++ b/src/L2/L2StandardBridge.sol
+@@ -1,12 +1,12 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { StandardBridge } from "src/universal/StandardBridge.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { StandardBridge } from "../universal/StandardBridge.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { OptimismMintableERC20 } from "../universal/OptimismMintableERC20.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x4200000000000000000000000000000000000010
+diff --git a/src/L2/L2ToL1MessagePasser.sol b/src/L2/L2ToL1MessagePasser.sol
+index 8c764e9992710fc96400d92029800d3f1c3c9784..1fcf34afea5a04c4467810c81622e3c269598a90 100644
+--- a/src/L2/L2ToL1MessagePasser.sol
++++ b/src/L2/L2ToL1MessagePasser.sol
+@@ -1,11 +1,11 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { Types } from "src/libraries/Types.sol";
+-import { Hashing } from "src/libraries/Hashing.sol";
+-import { Encoding } from "src/libraries/Encoding.sol";
+-import { Burn } from "src/libraries/Burn.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { Types } from "../libraries/Types.sol";
++import { Hashing } from "../libraries/Hashing.sol";
++import { Encoding } from "../libraries/Encoding.sol";
++import { Burn } from "../libraries/Burn.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x4200000000000000000000000000000000000016
+diff --git a/src/L2/SequencerFeeVault.sol b/src/L2/SequencerFeeVault.sol
+index 5f2c329db19237eaae62daa99e942dc2a9741b05..914805851c2ffa65de35cdd575af4b58ead51393 100644
+--- a/src/L2/SequencerFeeVault.sol
++++ b/src/L2/SequencerFeeVault.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { FeeVault } from "src/universal/FeeVault.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { FeeVault } from "../universal/FeeVault.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeploy 0x4200000000000000000000000000000000000011
+diff --git a/src/Safe/LivenessGuard.sol b/src/Safe/LivenessGuard.sol
+index ae2c5145514b5ffad47b43ae8adfc7d02b59dc71..2815e03f9140b3047c221d31f6056ebff909d5c3 100644
+--- a/src/Safe/LivenessGuard.sol
++++ b/src/Safe/LivenessGuard.sol
+@@ -4,9 +4,9 @@ pragma solidity 0.8.15;
+ import { Safe } from "safe-contracts/Safe.sol";
+ import { BaseGuard, GuardManager } from "safe-contracts/base/GuardManager.sol";
+ import { ModuleManager } from "safe-contracts/base/ModuleManager.sol";
+-import { SafeSigners } from "src/Safe/SafeSigners.sol";
++import { SafeSigners } from "../Safe/SafeSigners.sol";
+ import { Enum } from "safe-contracts/common/Enum.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+ 
+ /// @title LivenessGuard
+diff --git a/src/Safe/LivenessModule.sol b/src/Safe/LivenessModule.sol
+index 41f2ed64708e8c6b8cacd66afe0f5b45ad0c1930..70c6fc65fb1c39ba2b30037da72ddab41671af76 100644
+--- a/src/Safe/LivenessModule.sol
++++ b/src/Safe/LivenessModule.sol
+@@ -4,8 +4,8 @@ pragma solidity 0.8.15;
+ import { Safe, OwnerManager } from "safe-contracts/Safe.sol";
+ import { Enum } from "safe-contracts/common/Enum.sol";
+ import { OwnerManager } from "safe-contracts/base/OwnerManager.sol";
+-import { LivenessGuard } from "src/Safe/LivenessGuard.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { LivenessGuard } from "../Safe/LivenessGuard.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @title LivenessModule
+ /// @notice This module is intended to be used in conjunction with the LivenessGuard. In the event
+diff --git a/src/dispute/DisputeGameFactory.sol b/src/dispute/DisputeGameFactory.sol
+index 9db6bbebe29fc5f9e9c415ad54ef6e5d9bf1a334..78388475bd7985a56e16693b38d4f6086bb9589c 100644
+--- a/src/dispute/DisputeGameFactory.sol
++++ b/src/dispute/DisputeGameFactory.sol
+@@ -3,15 +3,15 @@ pragma solidity ^0.8.15;
+ 
+ import { ClonesWithImmutableArgs } from "@cwia/ClonesWithImmutableArgs.sol";
+ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
+-import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
++import { IDisputeGame } from "../dispute/interfaces/IDisputeGame.sol";
++import { IDisputeGameFactory } from "../dispute/interfaces/IDisputeGameFactory.sol";
+ 
+-import { LibGameId } from "src/dispute/lib/LibGameId.sol";
++import { LibGameId } from "../dispute/lib/LibGameId.sol";
+ 
+-import "src/libraries/DisputeTypes.sol";
+-import "src/libraries/DisputeErrors.sol";
++import "../libraries/DisputeTypes.sol";
++import "../libraries/DisputeErrors.sol";
+ 
+ /// @title DisputeGameFactory
+ /// @notice A factory contract for creating `IDisputeGame` contracts. All created dispute games
+diff --git a/src/dispute/FaultDisputeGame.sol b/src/dispute/FaultDisputeGame.sol
+index 052cc4a968df3e1710b33c0f924ddb7326cdab5c..8c23f71b00e77368d5b46d4e9b970f1207291c88 100644
+--- a/src/dispute/FaultDisputeGame.sol
++++ b/src/dispute/FaultDisputeGame.sol
+@@ -1,18 +1,18 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
+-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
+-import { IInitializable } from "src/dispute/interfaces/IInitializable.sol";
+-import { IBigStepper, IPreimageOracle } from "src/dispute/interfaces/IBigStepper.sol";
+-
+-import { Clone } from "src/libraries/Clone.sol";
+-import { Types } from "src/libraries/Types.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { LibClock } from "src/dispute/lib/LibUDT.sol";
+-
+-import "src/libraries/DisputeTypes.sol";
+-import "src/libraries/DisputeErrors.sol";
++import { IDisputeGame } from "../dispute/interfaces/IDisputeGame.sol";
++import { IFaultDisputeGame } from "../dispute/interfaces/IFaultDisputeGame.sol";
++import { IInitializable } from "../dispute/interfaces/IInitializable.sol";
++import { IBigStepper, IPreimageOracle } from "../dispute/interfaces/IBigStepper.sol";
++
++import { Clone } from "../libraries/Clone.sol";
++import { Types } from "../libraries/Types.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { LibClock } from "../dispute/lib/LibUDT.sol";
++
++import "../libraries/DisputeTypes.sol";
++import "../libraries/DisputeErrors.sol";
+ 
+ /// @title FaultDisputeGame
+ /// @notice An implementation of the `IFaultDisputeGame` interface.
+diff --git a/src/dispute/interfaces/IBigStepper.sol b/src/dispute/interfaces/IBigStepper.sol
+index 558fadaeba268dced265b24a5b7ab4bf6918e28d..d6b7677879d77381d97ddd15018f0b5e85184bb7 100644
+--- a/src/dispute/interfaces/IBigStepper.sol
++++ b/src/dispute/interfaces/IBigStepper.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
++import { IPreimageOracle } from "../../cannon/interfaces/IPreimageOracle.sol";
+ 
+ /// @title IBigStepper
+ /// @notice An interface for a contract with a state transition function that
+diff --git a/src/dispute/interfaces/IDisputeGame.sol b/src/dispute/interfaces/IDisputeGame.sol
+index a692492c894b4939e760ede74c0a858044ca2719..3dea0bee2ecd420d4d9360879020d2a682cb0fdb 100644
+--- a/src/dispute/interfaces/IDisputeGame.sol
++++ b/src/dispute/interfaces/IDisputeGame.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import { IInitializable } from "src/dispute/interfaces/IInitializable.sol";
++import { IInitializable } from "../../dispute/interfaces/IInitializable.sol";
+ 
+ import "src/libraries/DisputeTypes.sol";
+ 
+diff --git a/src/dispute/interfaces/IDisputeGameFactory.sol b/src/dispute/interfaces/IDisputeGameFactory.sol
+index d468a91f4f6d920ec079c2e789f834a001936bb1..3bd7dd917b4c2fc75723dac9fb8e0c221e907a4b 100644
+--- a/src/dispute/interfaces/IDisputeGameFactory.sol
++++ b/src/dispute/interfaces/IDisputeGameFactory.sol
+@@ -3,7 +3,7 @@ pragma solidity ^0.8.15;
+ 
+ import { IDisputeGame } from "./IDisputeGame.sol";
+ 
+-import "src/libraries/DisputeTypes.sol";
++import "../../libraries/DisputeTypes.sol";
+ 
+ /// @title IDisputeGameFactory
+ /// @notice The interface for a DisputeGameFactory contract.
+diff --git a/src/dispute/interfaces/IFaultDisputeGame.sol b/src/dispute/interfaces/IFaultDisputeGame.sol
+index d53107e3bace24d836a7cb3667d717a632fd6679..1b235ba9c256944805565f37beb9ec48274adc2a 100644
+--- a/src/dispute/interfaces/IFaultDisputeGame.sol
++++ b/src/dispute/interfaces/IFaultDisputeGame.sol
+@@ -3,7 +3,7 @@ pragma solidity ^0.8.15;
+ 
+ import { IDisputeGame } from "./IDisputeGame.sol";
+ 
+-import "src/libraries/DisputeTypes.sol";
++import "../../libraries/DisputeTypes.sol";
+ 
+ /// @title IFaultDisputeGame
+ /// @notice The interface for a fault proof backed dispute game.
+diff --git a/src/dispute/lib/LibGameId.sol b/src/dispute/lib/LibGameId.sol
+index a96d81e0df73e4c7ab3782b385feb00f8e7c1804..8d42c130dc773b6d666901bba7bb88d9855ffca3 100644
+--- a/src/dispute/lib/LibGameId.sol
++++ b/src/dispute/lib/LibGameId.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import "src/libraries/DisputeTypes.sol";
+-import "src/dispute/interfaces/IDisputeGame.sol";
++import "../../libraries/DisputeTypes.sol";
++import "../../dispute/interfaces/IDisputeGame.sol";
+ 
+ /// @title LibGameId
+ /// @notice Utility functions for packing and unpacking GameIds.
+diff --git a/src/dispute/lib/LibHashing.sol b/src/dispute/lib/LibHashing.sol
+index 800eeb1bde67f1256ad78a4540d0752d099e60b5..c186977112484e6eca150d89e774961504fc8d8c 100644
+--- a/src/dispute/lib/LibHashing.sol
++++ b/src/dispute/lib/LibHashing.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import "src/libraries/DisputeTypes.sol";
++import "../../libraries/DisputeTypes.sol";
+ 
+ /// @title Hashing
+ /// @notice This library contains all of the hashing utilities used in the Cannon contracts.
+diff --git a/src/dispute/lib/LibPosition.sol b/src/dispute/lib/LibPosition.sol
+index f3b4f2e71ae9258ead35aa21e43c196ce193439c..19979c08758c47603726375766706a0693766339 100644
+--- a/src/dispute/lib/LibPosition.sol
++++ b/src/dispute/lib/LibPosition.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import "src/libraries/DisputeTypes.sol";
+-import "src/libraries/DisputeErrors.sol";
++import "../../libraries/DisputeTypes.sol";
++import "../../libraries/DisputeErrors.sol";
+ 
+ /// @title LibPosition
+ /// @notice This library contains helper functions for working with the `Position` type.
+diff --git a/src/dispute/lib/LibUDT.sol b/src/dispute/lib/LibUDT.sol
+index 1ea8e33565c5b4508766285e321f6a9867697ad6..2b9251c4baa2ff43a3608e4590868b6c9a5ea300 100644
+--- a/src/dispute/lib/LibUDT.sol
++++ b/src/dispute/lib/LibUDT.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import "src/libraries/DisputeTypes.sol";
++import "../../libraries/DisputeTypes.sol";
+ 
+ /// @title LibClock
+ /// @notice This library contains helper functions for working with the `Clock` type.
+diff --git a/src/legacy/DeployerWhitelist.sol b/src/legacy/DeployerWhitelist.sol
+index 11585791655f701da5a221603acb2bdd3f91e765..79ee120105e6cc6ae2133a8f71d54f081ecb757f 100644
+--- a/src/legacy/DeployerWhitelist.sol
++++ b/src/legacy/DeployerWhitelist.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @custom:legacy
+ /// @custom:proxied
+diff --git a/src/legacy/L1BlockNumber.sol b/src/legacy/L1BlockNumber.sol
+index a82ddaa5806e6bfdc0efdd34b520ceff950de167..78374c4b5b0f40343efa3487f74726a0c0be6f4b 100644
+--- a/src/legacy/L1BlockNumber.sol
++++ b/src/legacy/L1BlockNumber.sol
+@@ -1,9 +1,9 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { L1Block } from "src/L2/L1Block.sol";
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { L1Block } from "../L2/L1Block.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @custom:legacy
+ /// @custom:proxied
+diff --git a/src/legacy/L1ChugSplashProxy.sol b/src/legacy/L1ChugSplashProxy.sol
+index 4f3f7509c9fd665924d66ef83355b9152d7ee4a7..c6229f271173e1df7fb7377bb65d9dba2ae6d248 100644
+--- a/src/legacy/L1ChugSplashProxy.sol
++++ b/src/legacy/L1ChugSplashProxy.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { Constants } from "src/libraries/Constants.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @title IL1ChugSplashDeployer
+ interface IL1ChugSplashDeployer {
+diff --git a/src/legacy/LegacyERC20ETH.sol b/src/legacy/LegacyERC20ETH.sol
+index 9f6545774d3c714e2ef60940305bb59b7ab4dc7c..43c97a877e78fe8c768ccf6c3d88d64cf6961c6d 100644
+--- a/src/legacy/LegacyERC20ETH.sol
++++ b/src/legacy/LegacyERC20ETH.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { Predeploys } from "src/libraries/Predeploys.sol";
+-import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
++import { OptimismMintableERC20 } from "../universal/OptimismMintableERC20.sol";
+ 
+ /// @custom:legacy
+ /// @custom:proxied
+diff --git a/src/legacy/LegacyMessagePasser.sol b/src/legacy/LegacyMessagePasser.sol
+index caf5e6a233225600df44036e89225c4a3b1476cd..7eecb54dffd9984248cec8c8d99e711e2946a312 100644
+--- a/src/legacy/LegacyMessagePasser.sol
++++ b/src/legacy/LegacyMessagePasser.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @custom:legacy
+ /// @custom:proxied
+diff --git a/src/legacy/LegacyMintableERC20.sol b/src/legacy/LegacyMintableERC20.sol
+index 2508b34e43b3f6681b9b48569008c109ddfb8db5..05c8c5a04cc6bf1ab373fc25b2eab0e2f537510b 100644
+--- a/src/legacy/LegacyMintableERC20.sol
++++ b/src/legacy/LegacyMintableERC20.sol
+@@ -2,7 +2,7 @@
+ pragma solidity 0.8.15;
+ 
+ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+-import { ILegacyMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
++import { ILegacyMintableERC20 } from "../universal/OptimismMintableERC20.sol";
+ 
+ /// @title LegacyMintableERC20
+ /// @notice The legacy implementation of the OptimismMintableERC20. This
+diff --git a/src/legacy/ResolvedDelegateProxy.sol b/src/legacy/ResolvedDelegateProxy.sol
+index e668c74ffa5ebe4a6e271d89c50198a219361857..b987ba97df10099aa157f1b4181463fb85809b28 100644
+--- a/src/legacy/ResolvedDelegateProxy.sol
++++ b/src/legacy/ResolvedDelegateProxy.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { AddressManager } from "src/legacy/AddressManager.sol";
++import { AddressManager } from "../legacy/AddressManager.sol";
+ 
+ /// @custom:legacy
+ /// @title ResolvedDelegateProxy
+diff --git a/src/libraries/DisputeTypes.sol b/src/libraries/DisputeTypes.sol
+index 23d724c25d33bb99d7dc2955b2fb30038342e59a..809ee7321dca35767c9aca4438d6415239861581 100644
+--- a/src/libraries/DisputeTypes.sol
++++ b/src/libraries/DisputeTypes.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.15;
+ 
+-import { LibHashing } from "src/dispute/lib/LibHashing.sol";
++import { LibHashing } from "../dispute/lib/LibHashing.sol";
+ import {
+     LibClaim,
+     LibHash,
+@@ -10,9 +10,9 @@ import {
+     LibTimestamp,
+     LibVMStatus,
+     LibGameType
+-} from "src/dispute/lib/LibUDT.sol";
+-import { LibPosition } from "src/dispute/lib/LibPosition.sol";
+-import { LibGameId } from "src/dispute/lib/LibGameId.sol";
++} from "../dispute/lib/LibUDT.sol";
++import { LibPosition } from "../dispute/lib/LibPosition.sol";
++import { LibGameId } from "../dispute/lib/LibGameId.sol";
+ 
+ using LibClaim for Claim global;
+ using LibHashing for Claim global;
+diff --git a/src/periphery/op-nft/AttestationStation.sol b/src/periphery/op-nft/AttestationStation.sol
+index b9af730a71d4a8b4f12e5d11b09d6d1e50ffaba7..459e67d23b6d5718a35e3ce45bfbf86f8805c80b 100644
+--- a/src/periphery/op-nft/AttestationStation.sol
++++ b/src/periphery/op-nft/AttestationStation.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../../universal/ISemver.sol";
+ 
+ /// @title AttestationStation
+ /// @author Optimism Collective
+diff --git a/src/periphery/op-nft/Optimist.sol b/src/periphery/op-nft/Optimist.sol
+index 74d04b087d865f9191d438657222505703e764d3..4d6202af4fa222e6445862e9f47149608ded06c4 100644
+--- a/src/periphery/op-nft/Optimist.sol
++++ b/src/periphery/op-nft/Optimist.sol
+@@ -1,11 +1,11 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ISemver } from "../../universal/ISemver.sol";
+ import { ERC721BurnableUpgradeable } from
+     "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+-import { AttestationStation } from "src/periphery/op-nft/AttestationStation.sol";
+-import { OptimistAllowlist } from "src/periphery/op-nft/OptimistAllowlist.sol";
++import { AttestationStation } from "../../periphery/op-nft/AttestationStation.sol";
++import { OptimistAllowlist } from "../../periphery/op-nft/OptimistAllowlist.sol";
+ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+ 
+ /// @author Optimism Collective
+diff --git a/src/periphery/op-nft/OptimistAllowlist.sol b/src/periphery/op-nft/OptimistAllowlist.sol
+index b8212a37c67442e4ef94477005aa4c59441c966e..f40bba3b526c05fdb5b804d08fde7b231addfa26 100644
+--- a/src/periphery/op-nft/OptimistAllowlist.sol
++++ b/src/periphery/op-nft/OptimistAllowlist.sol
+@@ -1,9 +1,9 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { AttestationStation } from "src/periphery/op-nft/AttestationStation.sol";
+-import { OptimistConstants } from "src/periphery/op-nft/libraries/OptimistConstants.sol";
++import { ISemver } from "../../universal/ISemver.sol";
++import { AttestationStation } from "../../periphery/op-nft/AttestationStation.sol";
++import { OptimistConstants } from "../../periphery/op-nft/libraries/OptimistConstants.sol";
+ 
+ /// @title  OptimistAllowlist
+ /// @notice Source of truth for whether an address is able to mint an Optimist NFT.
+diff --git a/src/periphery/op-nft/OptimistInviter.sol b/src/periphery/op-nft/OptimistInviter.sol
+index 222405d77c33626ffc1896e8a0608f6a70a34b93..1f56952b1996ed00690e623b8690cd7b3080fd11 100644
+--- a/src/periphery/op-nft/OptimistInviter.sol
++++ b/src/periphery/op-nft/OptimistInviter.sol
+@@ -1,9 +1,9 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { OptimistConstants } from "src/periphery/op-nft/libraries/OptimistConstants.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { AttestationStation } from "src/periphery/op-nft/AttestationStation.sol";
++import { OptimistConstants } from "../../periphery/op-nft/libraries/OptimistConstants.sol";
++import { ISemver } from "../../universal/ISemver.sol";
++import { AttestationStation } from "../../periphery/op-nft/AttestationStation.sol";
+ import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+ import { EIP712Upgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+ 
+diff --git a/src/universal/CrossDomainMessenger.sol b/src/universal/CrossDomainMessenger.sol
+index 883a7d0ae7e12e21b970453d003b44e4f6104d6e..12aa7d19195f989e5bc33e4df6d8e8570db77305 100644
+--- a/src/universal/CrossDomainMessenger.sol
++++ b/src/universal/CrossDomainMessenger.sol
+@@ -2,10 +2,10 @@
+ pragma solidity 0.8.15;
+ 
+ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+-import { SafeCall } from "src/libraries/SafeCall.sol";
+-import { Hashing } from "src/libraries/Hashing.sol";
+-import { Encoding } from "src/libraries/Encoding.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { SafeCall } from "../libraries/SafeCall.sol";
++import { Hashing } from "../libraries/Hashing.sol";
++import { Encoding } from "../libraries/Encoding.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @custom:legacy
+ /// @title CrossDomainMessengerLegacySpacer0
+diff --git a/src/universal/ERC721Bridge.sol b/src/universal/ERC721Bridge.sol
+index 9a8d0ae67abed6d1c45419bcd61de5050e8a78a6..6222296f14e30876bac6fe98cb9e9640a5ed0a14 100644
+--- a/src/universal/ERC721Bridge.sol
++++ b/src/universal/ERC721Bridge.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { SuperchainConfig } from "../L1/SuperchainConfig.sol";
+ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+ 
+diff --git a/src/universal/FeeVault.sol b/src/universal/FeeVault.sol
+index 626251c7a9717340d0c0442c9bc3c6af1cdfe63a..9ac3bf6d3c7d4150e0d6e160ba7391b82b8b263e 100644
+--- a/src/universal/FeeVault.sol
++++ b/src/universal/FeeVault.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { L2StandardBridge } from "src/L2/L2StandardBridge.sol";
+-import { Predeploys } from "src/libraries/Predeploys.sol";
++import { L2StandardBridge } from "../L2/L2StandardBridge.sol";
++import { Predeploys } from "../libraries/Predeploys.sol";
+ 
+ /// @title FeeVault
+ /// @notice The FeeVault contract contains the basic logic for the various different vault contracts
+diff --git a/src/universal/OptimismMintableERC20.sol b/src/universal/OptimismMintableERC20.sol
+index 43ddd65424f895b007d2eab8f5907b281c714f74..838e4c0f60894c67f2d5caad76328b2a3048d9dd 100644
+--- a/src/universal/OptimismMintableERC20.sol
++++ b/src/universal/OptimismMintableERC20.sol
+@@ -3,8 +3,8 @@ pragma solidity 0.8.15;
+ 
+ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+-import { ILegacyMintableERC20, IOptimismMintableERC20 } from "src/universal/IOptimismMintableERC20.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { ILegacyMintableERC20, IOptimismMintableERC20 } from "../universal/IOptimismMintableERC20.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @title OptimismMintableERC20
+ /// @notice OptimismMintableERC20 is a standard extension of the base ERC20 token contract designed
+diff --git a/src/universal/OptimismMintableERC20Factory.sol b/src/universal/OptimismMintableERC20Factory.sol
+index 32c603e88e879492c0862fe8d8c1623b37bb9fa4..f0d17756e99290521c3eb6aff7b0a94a08ffb21f 100644
+--- a/src/universal/OptimismMintableERC20Factory.sol
++++ b/src/universal/OptimismMintableERC20Factory.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { OptimismMintableERC20 } from "../universal/OptimismMintableERC20.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @custom:proxied
+ /// @custom:predeployed 0x4200000000000000000000000000000000000012
+diff --git a/src/universal/OptimismMintableERC721.sol b/src/universal/OptimismMintableERC721.sol
+index 025b5b14bde3b624d2e693cd30b6d4c1b8a734f4..c146c47a53f3f69545aee6b5cc05c6ace876148d 100644
+--- a/src/universal/OptimismMintableERC721.sol
++++ b/src/universal/OptimismMintableERC721.sol
+@@ -5,8 +5,8 @@ import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extension
+ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+-import { IOptimismMintableERC721 } from "src/universal/IOptimismMintableERC721.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { IOptimismMintableERC721 } from "../universal/IOptimismMintableERC721.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @title OptimismMintableERC721
+ /// @notice This contract is the remote representation for some token that lives on another network,
+diff --git a/src/universal/OptimismMintableERC721Factory.sol b/src/universal/OptimismMintableERC721Factory.sol
+index 9d9cd62c48d6f64e4a2a77642c560ab7e4115534..dd368f184accf5cccc75c87c562633bf60c5a731 100644
+--- a/src/universal/OptimismMintableERC721Factory.sol
++++ b/src/universal/OptimismMintableERC721Factory.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { OptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
+-import { ISemver } from "src/universal/ISemver.sol";
++import { OptimismMintableERC721 } from "../universal/OptimismMintableERC721.sol";
++import { ISemver } from "../universal/ISemver.sol";
+ 
+ /// @title OptimismMintableERC721Factory
+ /// @notice Factory contract for creating OptimismMintableERC721 contracts.
+diff --git a/src/universal/Proxy.sol b/src/universal/Proxy.sol
+index 0325a61d3aabeae05edc8e1f8fa0be5ff3e12fdb..031f79a36c5fb86bee989bed5ccda43a8d7509e7 100644
+--- a/src/universal/Proxy.sol
++++ b/src/universal/Proxy.sol
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { Constants } from "src/libraries/Constants.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @title Proxy
+ /// @notice Proxy is a transparent proxy that passes through the call if the caller is the owner or
+diff --git a/src/universal/ProxyAdmin.sol b/src/universal/ProxyAdmin.sol
+index 8558d421bb46f4f8c76a234109df31d5cee429b2..18098e414db27f6e1961b6731c724a79695c18cb 100644
+--- a/src/universal/ProxyAdmin.sol
++++ b/src/universal/ProxyAdmin.sol
+@@ -2,10 +2,10 @@
+ pragma solidity 0.8.15;
+ 
+ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+-import { Proxy } from "src/universal/Proxy.sol";
+-import { AddressManager } from "src/legacy/AddressManager.sol";
+-import { L1ChugSplashProxy } from "src/legacy/L1ChugSplashProxy.sol";
+-import { Constants } from "src/libraries/Constants.sol";
++import { Proxy } from "../universal/Proxy.sol";
++import { AddressManager } from "../legacy/AddressManager.sol";
++import { L1ChugSplashProxy } from "../legacy/L1ChugSplashProxy.sol";
++import { Constants } from "../libraries/Constants.sol";
+ 
+ /// @title IStaticERC1967Proxy
+ /// @notice IStaticERC1967Proxy is a static version of the ERC1967 proxy interface.
+diff --git a/src/universal/StandardBridge.sol b/src/universal/StandardBridge.sol
+index 0e5c4bb8752488aa367d292e1c2af9bf8b532774..a19146fe3de6218e931bf75e7fba3569ea2489e1 100644
+--- a/src/universal/StandardBridge.sol
++++ b/src/universal/StandardBridge.sol
+@@ -5,10 +5,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+-import { SafeCall } from "src/libraries/SafeCall.sol";
+-import { IOptimismMintableERC20, ILegacyMintableERC20 } from "src/universal/IOptimismMintableERC20.sol";
+-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+-import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
++import { SafeCall } from "../libraries/SafeCall.sol";
++import { IOptimismMintableERC20, ILegacyMintableERC20 } from "../universal/IOptimismMintableERC20.sol";
++import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
++import { OptimismMintableERC20 } from "../universal/OptimismMintableERC20.sol";
+ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+ 
+ /// @custom:upgradeable
+diff --git a/src/universal/StorageSetter.sol b/src/universal/StorageSetter.sol
+index 53b8ab2affd5ef639fca4321126a6b47296330fb..4b1b1b79e96cf761792565a8be5c61764326ca3b 100644
+--- a/src/universal/StorageSetter.sol
++++ b/src/universal/StorageSetter.sol
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity 0.8.15;
+ 
+-import { ISemver } from "src/universal/ISemver.sol";
+-import { Storage } from "src/libraries/Storage.sol";
++import { ISemver } from "../universal/ISemver.sol";
++import { Storage } from "../libraries/Storage.sol";
+ 
+ /// @title StorageSetter
+ /// @notice A simple contract that allows setting arbitrary storage slots.

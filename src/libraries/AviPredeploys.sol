@@ -7,6 +7,7 @@ library AviPredeploys {
     address internal constant L1_AVI_STANDARD_BRIDGE = 0xDEfA668c802340Ca48087b49DC9dfe093129BF60;
 
     // https://docs.optimism.io/chain/addresses
-    address internal constant L1_CROSS_DOMAIN_MESSENGER = 0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef;
+    // TODO: update these to mainnet addresses when time comes
+    address internal constant L1_CROSS_DOMAIN_MESSENGER = 0xC34855F4De64F1840e5686e64278da901e261f20;
     address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
 }

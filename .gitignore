@@ -1,0 +1,46 @@
+# Compiler files
+cache/
+out/
+
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+
+# Docs
+docs/
+
+# Dotenv file
+.env
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+
+# Ignore a blackhole and the folder for development
+node_modules/
+.vs/
+.idea/
+*.iml
+/rethinkdb_data/
+coverage/
+
+# Yarn files
+**/.yarn/install-state.gz
+**/.yarn/build-state.yml
+
+# Ignore bwd folders
+**/dist
+
+# Ignore JavaScript files
+**/*.js
+**/*.js.map
+!src/**/*.d.ts
+!eslint.config.js
+**/*.tsbuildinfo
+
+# HardHat shit
+artifacts
+cache_forge
