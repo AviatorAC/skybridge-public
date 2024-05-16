@@ -1,28 +1,11 @@
 # AVI Skybridge
 
-## Installation
+The public part of the SkyBridge contracts!
 
-1. Install node.js
-1. Install `yarn` (`npm i -g yarn`)
-1. Run `yarn` in the root directory of this project
+## How to run tests yourself
 
-## Running tests / coverages
-
-`yarn test` / `yarn coverage`
-
-## Deploying
-
-1. Obtain your L1 and L2 RPC urls, as well as your private key in hexadecimal format
-1. Run `./deploy.sh <L1_RPC_URL> <L2_RPC_URL> <PRIVATE_KEY>`
-
-## Running the backend
-
-### Requirements
-
--   a postgresql instance
-
-1. Deploy the contracts as described above
-1. cd into the `backend` directory
-1. Fill out the correct postgresql connection string in the `.env` file
-1. Run `yarn cleanbuild` to build the project
-1. Run `yarn start` to start the backend
+1. Install git, foundry, and node.js (we recommend using volta to manage node.js versions, but you can also use fnm, nvm, or just direct install)
+1. Clone this repository
+1. Enable corepack: `npx corepack enable`
+1. Install dependencies: `yarn`
+1. Run tests: `yarn test`
