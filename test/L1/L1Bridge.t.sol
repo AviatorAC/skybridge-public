@@ -180,7 +180,7 @@ contract L1Bridge is CommonTest, MessengerHolder {
 
         testTokenL1.approve(address(l1Bridge), type(uint256).max);
         testTokenL1.approve(address(liquidityPool), type(uint256).max);
-        liquidityPool.receiveERC20(god, testTokenAddrL1, 1_000);
+        liquidityPool.receiveERC20(testTokenAddrL1, 1_000);
 
         l1Bridge.bridgeERC20{ value: 0.001 ether }(testTokenAddrL1, testTokenAddrL2, 1_000, 0, "");
 

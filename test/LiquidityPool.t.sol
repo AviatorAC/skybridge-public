@@ -93,7 +93,7 @@ contract LiquidityPool_Coverage is CommonTest {
     function test_ShouldReceiveERC20() public mockGod {
         testTokenL1.increaseAllowance(address(mockedLiquidityPool), 1_000);
 
-        mockedLiquidityPool.receiveERC20(god, testTokenAddrL1, 1_000);
+        mockedLiquidityPool.receiveERC20(testTokenAddrL1, 1_000);
 
         assertEq(mockedLiquidityPool.getERC20Balance(testTokenAddrL1), 1_000);
     }
@@ -101,7 +101,7 @@ contract LiquidityPool_Coverage is CommonTest {
     function test_ShouldBeAbleToSendERC20() public mockGod {
         // Give the liquidity pool some liquidity
         testTokenL1.increaseAllowance(address(mockedLiquidityPool), 1_000);
-        mockedLiquidityPool.receiveERC20(god, testTokenAddrL1, 1_000);
+        mockedLiquidityPool.receiveERC20(testTokenAddrL1, 1_000);
 
         // Send the liquidity to bob
         mockedLiquidityPool.sendERC20(bob, testTokenAddrL1, 1_000);
