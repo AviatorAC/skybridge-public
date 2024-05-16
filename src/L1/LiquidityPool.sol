@@ -62,11 +62,10 @@ contract LiquidityPool is AccessControl {
     receive() external payable {}
 
     /// @notice Allows this contract to receive ERC20 tokens.
-    /// @param _from Address to transfer the ERC20 token from.
     /// @param _token Address of the token contract to receive.
     /// @param _amount Amount of the token to receive.
-    function receiveERC20(address _from, address _token, uint256 _amount) external {
-        IERC20(_token).safeTransferFrom(_from, address(this), _amount);
+    function receiveERC20(address _token, uint256 _amount) external {
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /// @notice Returns the balance of the given token stored in this contract.
