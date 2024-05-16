@@ -1,0 +1,35 @@
+name: Sync with private repo
+
+on:
+  repository_dispatch:
+    types: [sync]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          path: skybridge-public
+
+      - uses: actions/checkout@v4
+        with:
+          repository: aviatorac/skybridge-private
+          path: private
+          token: ${{ secrets.PURPLEWOLF_TOKEN }}
+
+      - uses: fregante/setup-git-user@v2
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run sync script
+        run: |
+          cd private
+          node ./scripts/sync.mjs
