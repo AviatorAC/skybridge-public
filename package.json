@@ -5,19 +5,19 @@
 		"test": "forge test",
 		"coverage:summary": "forge coverage",
 		"coverage:full": "forge coverage && forge coverage --report debug > results.txt",
-		"coverage:lcov": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
+		"coverage:lcov": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage --ignore-errors inconsistent"
 	},
 	"dependencies": {
 		"@eth-optimism/contracts-bedrock": "patch:@eth-optimism/contracts-bedrock@https%3A//gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1#~/.yarn/patches/@eth-optimism-contracts-bedrock-https-e91c1d4a6a.patch",
-		"@openzeppelin/contracts": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?ecd2ca2cd7cac116f7a37d0e474bbb3d7d5e1c4d",
-		"@openzeppelin/contracts-upgradeable": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?0a2cb9a445c365870ed7a8ab461b12acf3e27d63",
-		"@rari-capital/solmate": "transmissions11/solmate#8f9b23f8838670afda0fd8983f2c41e8037ae6bc",
+		"@openzeppelin/contracts": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?dc44c9f1a4c3b10af99492eed84f83ed244203f6",
+		"@openzeppelin/contracts-upgradeable": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?2d081f24cac1a867f6f73d512f2022e1fa987854",
+		"@rari-capital/solmate": "https://gitpkg.now.sh/transmissions11/solmate?8f9b23f8838670afda0fd8983f2c41e8037ae6bc",
 		"@safe-global/safe-smart-account": "https://gitpkg.now.sh/safe-global/safe-smart-account?e870f514ad34cd9654c72174d6d4a839e3c6639f",
 		"clones-with-immutable-args": "^1.1.2"
 	},
-	"packageManager": "yarn@4.2.2",
+	"packageManager": "yarn@4.3.1",
 	"volta": {
-		"node": "20.13.1",
-		"yarn": "4.2.2"
+		"node": "20.11.1",
+		"yarn": "4.3.1"
 	}
 }

@@ -1,7 +1,14 @@
 [profile.default]
 src = 'src'
 out = 'out'
+script = 'scripts'
 libs = ['node_modules', 'lib']
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
+# TODO: does this fuck up?
+# test = 'tests-hardhat'
 cache_path = 'cache_forge'
 remappings = [
 	'@cwia/=node_modules/clones-with-immutable-args',

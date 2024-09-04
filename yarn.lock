@@ -10,9 +10,9 @@ __metadata:
   resolution: "@aviator/root@workspace:."
   dependencies:
     "@eth-optimism/contracts-bedrock": "patch:@eth-optimism/contracts-bedrock@https%3A//gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1#~/.yarn/patches/@eth-optimism-contracts-bedrock-https-e91c1d4a6a.patch"
-    "@openzeppelin/contracts": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?ecd2ca2cd7cac116f7a37d0e474bbb3d7d5e1c4d"
-    "@openzeppelin/contracts-upgradeable": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?0a2cb9a445c365870ed7a8ab461b12acf3e27d63"
-    "@rari-capital/solmate": "transmissions11/solmate#8f9b23f8838670afda0fd8983f2c41e8037ae6bc"
+    "@openzeppelin/contracts": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?dc44c9f1a4c3b10af99492eed84f83ed244203f6"
+    "@openzeppelin/contracts-upgradeable": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?2d081f24cac1a867f6f73d512f2022e1fa987854"
+    "@rari-capital/solmate": "https://gitpkg.now.sh/transmissions11/solmate?8f9b23f8838670afda0fd8983f2c41e8037ae6bc"
     "@safe-global/safe-smart-account": "https://gitpkg.now.sh/safe-global/safe-smart-account?e870f514ad34cd9654c72174d6d4a839e3c6639f"
     clones-with-immutable-args: "npm:^1.1.2"
   languageName: unknown
@@ -32,24 +32,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/contracts-upgradeable@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?0a2cb9a445c365870ed7a8ab461b12acf3e27d63":
-  version: 4.7.3
-  resolution: "@openzeppelin/contracts-upgradeable@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?0a2cb9a445c365870ed7a8ab461b12acf3e27d63"
-  checksum: 10/4e64887fb857e12326a3f505babe2ff057d47abf14d1341f9e9b38751f08fcead03e7d5206e0d1f85a162a0c1c48d0e93bb786fd1df10db7b56fe6e8f7b6a481
+"@openzeppelin/contracts-upgradeable@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?2d081f24cac1a867f6f73d512f2022e1fa987854":
+  version: 4.9.6
+  resolution: "@openzeppelin/contracts-upgradeable@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?2d081f24cac1a867f6f73d512f2022e1fa987854"
+  checksum: 10/792dd2b5479b0a9fef121cb7adb1c45c75432d6136218f71c01e291cbd64523e54cc3ba132d0577d091d3cef044e74d42adb208474ce251275886a8a135676f9
   languageName: node
   linkType: hard
 
-"@openzeppelin/contracts@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?ecd2ca2cd7cac116f7a37d0e474bbb3d7d5e1c4d":
-  version: 4.7.3
-  resolution: "@openzeppelin/contracts@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?ecd2ca2cd7cac116f7a37d0e474bbb3d7d5e1c4d"
-  checksum: 10/bf8de48912229a5fcc72cc41056bbfb72df58ea618861ae03401e42cf26fc0ce5fe6f33109ae80021d7a8a04cddb6465243475029af8098123e6fe59370ead05
+"@openzeppelin/contracts@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?dc44c9f1a4c3b10af99492eed84f83ed244203f6":
+  version: 4.9.6
+  resolution: "@openzeppelin/contracts@https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?dc44c9f1a4c3b10af99492eed84f83ed244203f6"
+  checksum: 10/734b711f8e9862dbd00bedfb86c3cb95cd1afb5380fb572af42cb4f0cc370c773faf6b65911e877ba708767f2e4f5e838ca8a8e45a003d1ebf275ed034cf66b6
   languageName: node
   linkType: hard
 
-"@rari-capital/solmate@transmissions11/solmate#8f9b23f8838670afda0fd8983f2c41e8037ae6bc":
+"@rari-capital/solmate@https://gitpkg.now.sh/transmissions11/solmate?8f9b23f8838670afda0fd8983f2c41e8037ae6bc":
   version: 7.0.0-alpha.3
-  resolution: "@rari-capital/solmate@https://github.com/transmissions11/solmate.git#commit=8f9b23f8838670afda0fd8983f2c41e8037ae6bc"
-  checksum: 10/851d999e8f4e98e5bea025bb76192690e27b1dba68f08b08b580087e7bcda8a24ea7fd9124ced54c390ff61d32b309263015296585ee2f64c4477d99df00adf3
+  resolution: "@rari-capital/solmate@https://gitpkg.now.sh/transmissions11/solmate?8f9b23f8838670afda0fd8983f2c41e8037ae6bc"
+  checksum: 10/e206cdf8c6658384e80a6ac299f10bf981fa782bb860ac264ba22be80bdb37f716dc987177c072aaab180af6de748c4435d212455953cf7918bb33ddce96a3f9
   languageName: node
   linkType: hard
 
