@@ -1,6 +1,19 @@
-# AVI Skybridge
+# AVI SkyBridge
 
-The public part of the SkyBridge contracts!
+The SkyBridge contracts! Meet the bridges, the liquidity pool, and our mintable tokens!
+
+# Known Possible Issues
+
+Here is a list of _possible_ issues that we are aware of at this time, and will result in your report being closed if reported:
+
+- SkyBridge tokens not trying to call `_spendAllowance()` when bridge calls `burn()` for a user's tokens
+  - We are investigating if this is a requirement or not, considering this function is only ever called when bridging tokens
+- `finalize*` functions can be affected by the bridge being paused, causing the bridging to never finish
+  - We are discussing internally if this is something that should be dropped
+- The fee recipient in L1 bridges defaults to the Liquidity Pool, instead of being provided when initializing the contract
+  - We are discussing internally if this is something that should be changed, or if it is ok to have as a sane default
+- The default messenger constants in `src/libraries/AviPredeploys.sol` being set to the wrong values for mainnet deploys
+  - We are aware of this, and will be implementing an update for passing this in the `initialize()` calls in the near future!
 
 ## How to run tests yourself
 
