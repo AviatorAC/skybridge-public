@@ -4,10 +4,8 @@ pragma solidity 0.8.15;
 import { Predeploys } from "@eth-optimism/contracts-bedrock/src/libraries/Predeploys.sol";
 import { AviPredeploys } from "src/libraries/AviPredeploys.sol";
 import { AviBridge } from "src/universal/AviBridge.sol";
-import { ISemver } from "@eth-optimism/contracts-bedrock/src/universal/ISemver.sol";
 import { OptimismMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/OptimismMintableERC20.sol";
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
-import { Constants } from "@eth-optimism/contracts-bedrock/src/libraries/Constants.sol";
 
 /// @custom:proxied
 /// @title L2AviBridge
@@ -17,7 +15,7 @@ import { Constants } from "@eth-optimism/contracts-bedrock/src/libraries/Constan
 ///         NOTE: this contract is not intended to support all variations of ERC20 tokens. Examples
 ///         of some token types that may not be properly supported by this contract include, but are
 ///         not limited to: tokens with transfer fees, rebasing tokens, and tokens with blocklists.
-contract L2AviBridge is AviBridge, ISemver {
+contract L2AviBridge is AviBridge {
     /// @custom:legacy
     /// @notice Emitted whenever a withdrawal from L2 to L1 is initiated.
     /// @param l1Token   Address of the token on L1.
@@ -68,40 +66,51 @@ contract L2AviBridge is AviBridge, ISemver {
         bytes extraData
     );
 
-    /// @custom:semver 1.7.0
-    string public constant version = "1.7.0";
+    /// @notice Emitted whenever a token is added to the allow list.
+    /// @param token             Address of the token .
+    /// @param executedBy        Address of the caller.
+    event AllowedTokenAdded(
+        address token,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever a token is removed from the allow list.
+    /// @param token             Address of the token .
+    /// @param executedBy        Address of the caller.
+    event AllowedTokenRemoved(
+        address token,
+        address executedBy
+    );
+
+    /// @notice Semantic version.
+    string public constant version = "1.0.0";
 
     /// @notice Mapping that stores deposits for a given pair of local and remote tokens.
     mapping(address => bool) public allowedTokens;
 
     address public liquidityPool;
 
-    /// @notice address if the receiver of the flatfee on l1
-    address public l1FeeRecipient;
-
-    /// @notice The flat bridging fee for all withdraws. Measured in ETH.
-    uint256 public flatFee = 0.001 ether;
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(bool isTestMode) {
+        // isTestMode is used to disable the disabling of the initializers when running tests
+        if (!isTestMode) {
+            _disableInitializers();
+        }
+    }
 
     /// @notice Constructs the L2AviBridge contract.
     /// @param _otherBridge Address of the L1AviBridge.
     /// @param _liquidityPool Address of the liquidityPool.
     /// @param _l1FeeRecipient Address of the l1FeeRecipient.
-    constructor(address payable _otherBridge, address payable _liquidityPool, address payable _l1FeeRecipient)
-        AviBridge(payable(AviPredeploys.L2_CROSS_DOMAIN_MESSENGER), _otherBridge)
-    {
+    function initialize(address payable _otherBridge, address payable _liquidityPool, address payable _l1FeeRecipient) public initializer {
         require(_otherBridge != address(0), "AviBridge: _otherBridge address cannot be zero");
         require(_liquidityPool != address(0), "AviBridge: _liquidityPool address cannot be zero");
         require(_l1FeeRecipient != address(0), "AviBridge: _l1FeeRecipient address cannot be zero");
 
-        liquidityPool = _liquidityPool;
-        l1FeeRecipient = _l1FeeRecipient;
-    }
+        __SkyBridge_init(payable(AviPredeploys.L2_CROSS_DOMAIN_MESSENGER), _otherBridge);
 
-    /// @notice Updates the flat fee for all deposits.
-    /// @param _fee New flat fee.
-    function setFlatFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_fee < 0.005 ether, "AviBridge: _fee must be less than 0.005 ether");
-        flatFee = _fee;
+        liquidityPool = _liquidityPool;
+        flatFeeRecipient = _l1FeeRecipient;
     }
 
     function paused() public view override returns (bool) { }
@@ -171,6 +180,32 @@ contract L2AviBridge is AviBridge, ISemver {
     ///         This function only works with OptimismMintableERC20 tokens or ether. Use the
     ///         `bridgeERC20To` function to bridge native L2 tokens to L1.
     /// @param _l2Token     Address of the L2 token to withdraw.
+    /// @param _amount      Amount of the L2 token to withdraw.
+    /// @param _minGasLimit Minimum gas limit to use for the transaction.
+    /// @param _extraData   Extra data attached to the withdrawal.
+    function fastWithdraw(
+        address _l2Token,
+        uint256 _amount,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    )
+        external
+        payable
+        virtual
+        onlyEOA
+    {
+        _initiateWithdrawal(_l2Token, msg.sender, msg.sender, _amount, _minGasLimit, true, _extraData);
+    }
+
+    /// @custom:legacy
+    /// @notice Initiates a withdrawal from L2 to L1 to a target account on L1.
+    ///         Note that if ETH is sent to a contract on L1 and the call fails, then that ETH will
+    ///         be locked in the L1AviBridge. ETH may be recoverable if the call can be
+    ///         successfully replayed by increasing the amount of gas supplied to the call. If the
+    ///         call will fail for any amount of gas, then the ETH will be locked permanently.
+    ///         This function only works with OptimismMintableERC20 tokens or ether. Use the
+    ///         `bridgeERC20To` function to bridge native L2 tokens to L1.
+    /// @param _l2Token     Address of the L2 token to withdraw.
     /// @param _to          Recipient account on L1.
     /// @param _amount      Amount of the L2 token to withdraw.
     /// @param _minGasLimit Minimum gas limit to use for the transaction.
@@ -210,6 +245,7 @@ contract L2AviBridge is AviBridge, ISemver {
         payable
         virtual
     {
+        require(_to != address(0), "L2AviBridge: cannot transfer to the zero address");
         if (_l1Token == address(0) && _l2Token == Predeploys.LEGACY_ERC20_ETH) {
             finalizeBridgeETH(_from, _to, _amount, _extraData);
         } else {
@@ -243,26 +279,39 @@ contract L2AviBridge is AviBridge, ISemver {
     )
         internal
     {
-        if (_fastBridge) {
-            require(allowedTokens[_l2Token], "L2AviBridge: token not allowed to be fast bridged");
-
-            // For ETH, _amount is the amount of ETH to send to the user, and we need it + the flat fee
-            if (_l2Token == Predeploys.LEGACY_ERC20_ETH) {
-                uint256 requiredTotal = _amount + flatFee;
-                require(msg.value >= requiredTotal, "L2AviBridge: insufficient ETH value");
-            } else {
-                // ERC20 tokens are just the amount of tokens to send to the user, so we require at least flatFee ETH sent too (with remainder refunded automatically (unless EVM is trolling))
-                require(msg.value >= flatFee, "L2AviBridge: insufficient ETH value");
-            }
-        }
+        require(_to != address(0), "L2AviBridge: cannot transfer to the zero address");
 
         address _trueTo = _to;
 
+        // When fast bridging, the fee is collected on L1. That said, let's make sure what the users send and what they specified in _amount is the same
         if (_fastBridge) {
-            // Send the flat fee to the l1FeeRecipient, so we can use it to make the transfer faast
-            _initiateBridgeETH(_from, l1FeeRecipient, flatFee, 0, "");
+            require(allowedTokens[_l2Token], "L2AviBridge: token not allowed to be fast bridged");
+
+            if (_l2Token == Predeploys.LEGACY_ERC20_ETH) {
+                require(msg.value == _amount, "L2AviBridge: insufficient ETH value");
+            }
+            // For non-ETH tokens prevent users from sending ETH
+            else {
+                require(msg.value == 0, "L2AviBridge: cannot send ETH with fast bridge");
+            }
+
             // Send the slow bridged tokens to our liquidity pool
             _trueTo = payable(liquidityPool);
+        }
+        // Slow withdrawals have a fee collected on L2
+        else {
+            // For ETH, we need to include the flat fee in the required total
+            if (_l2Token == Predeploys.LEGACY_ERC20_ETH) {
+                uint256 requiredTotal = _amount + flatFee;
+                require(msg.value == requiredTotal, "L2AviBridge: insufficient ETH value");
+            }
+            // For ERC20 tokens, require the flat fee to be sent along with the call
+            else {
+                require(msg.value == flatFee, "L2AviBridge: insufficient ETH value");
+            }
+
+            (bool feeSent, ) = flatFeeRecipient.call{value: flatFee}("");
+            require(feeSent, "L2AviBridge: Failed to transfer flat fee");
         }
 
         if (_l2Token == Predeploys.LEGACY_ERC20_ETH) {
@@ -274,6 +323,7 @@ contract L2AviBridge is AviBridge, ISemver {
             _emitFastWithdrawlInitiated(l1Token, _l2Token, _from, _to, _amount, _fastBridge, _extraData);
         }
     }
+
 
     function _emitFastWithdrawlInitiated(
         address l1Token,
@@ -368,6 +418,7 @@ contract L2AviBridge is AviBridge, ISemver {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         allowedTokens[_token] = true;
+        emit AllowedTokenAdded(_token, msg.sender);
     }
 
     /// @notice Allows the owner to remove a token from the allowedTokens mapping.
@@ -379,5 +430,6 @@ contract L2AviBridge is AviBridge, ISemver {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         allowedTokens[_token] = false;
+        emit AllowedTokenRemoved(_token, msg.sender);
     }
 }

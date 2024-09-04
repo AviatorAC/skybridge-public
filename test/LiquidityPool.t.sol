@@ -1,22 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import { LiquidityPool } from 'src/L1/LiquidityPool.sol';
+
 import { CommonTest, TestableLiquidityPool } from 'test/__setup__/CommonTest.sol';
 
 contract LiquidityPool_Coverage is CommonTest {
     TestableLiquidityPool mockedLiquidityPool;
-    event AdminAdded(address adminAddress);
-    event AdminRemoved(address adminAddress);
+
+    event AdminAdded(address adminAddress, address addedBy);
+    event AdminRemoved(address adminAddress, address removedBy);
 
     constructor() mockGod {
         mockedLiquidityPool = new TestableLiquidityPool();
+        mockedLiquidityPool.initialize();
+        mockedLiquidityPool.addBridge(god);
         vm.deal(address(mockedLiquidityPool), 10_000 ether);
     }
 
     function test_AddAdmin() public mockGod {
         vm.expectEmit(true, true, false, false);
 
-        emit AdminAdded(alice);
+        emit AdminAdded(alice, god);
 
         mockedLiquidityPool.addAdmin(alice);
 
@@ -52,7 +57,7 @@ contract LiquidityPool_Coverage is CommonTest {
 
         vm.expectEmit(true, true, false, false);
 
-        emit AdminRemoved(alice);
+        emit AdminRemoved(alice, god);
 
         mockedLiquidityPool.removeAdmin(alice);
 
@@ -78,7 +83,7 @@ contract LiquidityPool_Coverage is CommonTest {
     function test_RevertWhenNonAdminTriesToSendETH() public {
         vm.prank(bob);
 
-        vm.expectRevert("AccessControl: account 0x1d96f2f6bef1202e4ce1ff6dad0c2cb002861d3e is missing role 0x0000000000000000000000000000000000000000000000000000000000000000");
+        vm.expectRevert("AccessControl: account 0x1d96f2f6bef1202e4ce1ff6dad0c2cb002861d3e is missing role 0x2c10ed026c57a582fc611ce66b2094c62b8855f51673fb4996936ed6156e6d2d");
         mockedLiquidityPool.sendETH(bob, 1000 ether);
     }
 
@@ -108,5 +113,25 @@ contract LiquidityPool_Coverage is CommonTest {
 
         assertEq(testTokenL1.balanceOf(bob), 1_000);
         assertEq(mockedLiquidityPool.getERC20Balance(testTokenAddrL1), 0);
+    }
+
+    function test_ETHBalance() public {
+        assertEq(mockedLiquidityPool.getBalance(), 10_000 ether);
+    }
+
+    function test_ERC20Balance() public mockGod {
+        testTokenL1.increaseAllowance(address(mockedLiquidityPool), 1_000);
+        mockedLiquidityPool.receiveERC20(testTokenAddrL1, 1_000);
+
+        assertEq(mockedLiquidityPool.getERC20Balance(testTokenAddrL1), 1_000);
+    }
+
+    function test_RevertWhenNonERC20TokenTriesToQueryBalance() public {
+        vm.expectRevert();
+        mockedLiquidityPool.getERC20Balance(god);
+    }
+
+    function test_MakeALiquidityPoolToDoCoverage() public mockGod {
+        new LiquidityPool(true);
     }
 }

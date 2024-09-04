@@ -12,12 +12,9 @@ import "forge-std/console2.sol";
 import { IOptimismMintableERC20, ILegacyMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/IOptimismMintableERC20.sol";
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
-contract RawBridge is AviBridge {
-    constructor(
-        address payable messenger,
-        address payable otherBridge
-    ) AviBridge(messenger, otherBridge) {
-        // This is a raw bridge, so we don't need to initialize it
+contract RawBridge is AviBridge { 
+    function initialize(address payable messenger, address payable otherBridge) public initializer {
+        __SkyBridge_init(messenger, otherBridge);
     }
 
     receive() external payable virtual override {}
@@ -38,7 +35,8 @@ contract AviBridgeTest is CommonTest, MessengerHolder {
     NoMoneyAllowed noMoneyAllowed;
 
     constructor() mockGod {
-        bridge = new RawBridge(payable(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER), payable(address(AviPredeploys.L2_STANDARD_BRIDGE)));
+        bridge = new RawBridge();
+        bridge.initialize(payable(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER), payable(address(AviPredeploys.L2_STANDARD_BRIDGE)));
         noMoneyAllowed = new NoMoneyAllowed();
     }
 
@@ -85,11 +83,11 @@ contract AviBridgeTest is CommonTest, MessengerHolder {
     }
 
     function test_MessengerGetterReturnsMessenger() public {
-        assertEq(address(bridge.messenger()), address(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER));
+        assertEq(address(bridge.MESSENGER()), address(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER));
     }
 
     function test_OtherBridgeGetterReturnsOtherBridge() public {
-        assertEq(address(bridge.otherBridge()), AviPredeploys.L2_STANDARD_BRIDGE);
+        assertEq(address(bridge.OTHER_BRIDGE()), AviPredeploys.L2_STANDARD_BRIDGE);
     }
 
     function test_PausedReturnsFalse() public {

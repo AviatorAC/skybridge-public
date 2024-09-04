@@ -5,10 +5,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AviPredeploys } from "src/libraries/AviPredeploys.sol";
 import { AviBridge } from "src/universal/AviBridge.sol";
-import { ISemver } from "@eth-optimism/contracts-bedrock/src/universal/ISemver.sol";
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
-import { Constants } from "@eth-optimism/contracts-bedrock/src/libraries/Constants.sol";
 import { LiquidityPool } from "src/L1/LiquidityPool.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { SafeCall } from "@eth-optimism/contracts-bedrock/src/libraries/SafeCall.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// @custom:proxied
 /// @title L1AviBridge
@@ -20,7 +21,7 @@ import { LiquidityPool } from "src/L1/LiquidityPool.sol";
 ///         NOTE: this contract is not intended to support all variations of ERC20 tokens. Examples
 ///         of some token types that may not be properly supported by this contract include, but are
 ///         not limited to: tokens with transfer fees, rebasing tokens, and tokens with blocklists.
-contract L1AviBridge is AviBridge, ISemver {
+contract L1AviBridge is AviBridge {
     using SafeERC20 for IERC20;
 
     /// @custom:legacy
@@ -56,6 +57,56 @@ contract L1AviBridge is AviBridge, ISemver {
         bytes extraData
     );
 
+    /// @notice Emitted whenever Bridging fee is set.
+    /// @param previousFee       uint256 of old fee.
+    /// @param fee               uint256 of new fee.
+    /// @param executedBy        address of calling address.
+    event BridgingFeeChanged(
+        uint256 previousFee,
+        uint256 fee,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever Bridge paused value is set.
+    /// @param paused     bool of paused value.
+    /// @param executedBy address of calling address.
+    event PausedChanged(
+        bool    paused,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever other Bridge is set.
+    /// @param previousOtherBridge    address of previous other Bridge.
+    /// @param otherBridge            address of new other Bridge.
+    /// @param executedBy             address of calling address.
+    event OtherBridgeChanged(
+        address previousOtherBridge,
+        address otherBridge,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever Avi token address is set.
+    /// @param previousAviTokenAddress      address of old avi Token.
+    /// @param aviTokenAddress              address of new avi Token.
+    /// @param executedBy                   address of calling address.
+    event AviTokenAddressChanged(
+        address previousAviTokenAddress,
+        address aviTokenAddress,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever tokens are fast withdrawn.
+    /// @param amount       uint256 of the amount.
+    /// @param l1Token      address of the token on L1.
+    /// @param to           address of the recipient.
+    /// @param executedBy   address of the caller.
+    event FastWithdraw(
+        uint256 amount,
+        address l1Token,
+        address to,
+        address executedBy
+    );
+
     /// @custom:legacy
     /// @notice Emitted whenever an ERC20 withdrawal is finalized.
     /// @param l1Token   Address of the token on L1.
@@ -74,17 +125,13 @@ contract L1AviBridge is AviBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 2.0.0
-    string public constant version = "2.0.0";
-
-    /// @notice The flat bridging fee for all deposits. Measured in ETH.
-    uint256 public flatFee = 0.001 ether;
+    string public constant version = "1.0.0";
 
     /// @notice The numerator component of the percentage based briding fee for all deposits.
-    uint256 public bridgingFee = 3;
+    uint256 public bridgingFee;
 
     /// @notice if the bridge is paused
-    bool _isPaused = false;
+    bool internal _isPaused;
 
     /// @notice the liquidity pool
     LiquidityPool public LIQUIDITY_POOL;
@@ -92,65 +139,91 @@ contract L1AviBridge is AviBridge, ISemver {
     /// @notice The address of the Aviator token on the L1 chain
     address public L1AviToken;
 
-    /// @notice The address of the receiver of the flat fee
-    address public flatFeeReceipient;
+    /// @notice Fastwithdrawal nonces
+    mapping(address => uint256) private fastBridgeNonces;
 
-    /// @notice Mapping of the available ETH for each user
-    mapping(address => uint256) private fastBridgeBalances;
+    /// @notice Fastwithdrawal request structure
+    struct AviFastWithdrawal {
+        address l1_token;
+        address l2_token;
+        address from;
+        address to;
+        uint256 amount;
+        uint256 nonce;
 
-    /// @notice Mapping of the available ERC20 for each user
-    mapping(address => mapping(address => uint256)) private fastBridgeERC20Balances;
+        bytes proof_transaction;
+    }
 
-    /// @notice Constructs the L1AviBridge contract.
-    constructor(address payable _liquidityPool, address _token) AviBridge(payable(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER), payable(AviPredeploys.L2_STANDARD_BRIDGE)) {
+    bytes32 private constant _WITHDRAWAL_TYPEHASH = keccak256("Message(address l1_token,address l2_token,address from,address to,uint256 amount,uint256 nonce,bytes proof_transaction)");
+
+    /// @notice the OptimismPortal contract address
+    address payable public optimismPortal;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(bool isTestMode) {
+        // isTestMode is used to disable the disabling of the initializers when running tests
+        if (!isTestMode) {
+            _disableInitializers();
+        }
+    }
+
+    function initialize(address payable _liquidityPool, address _token, address payable _optimismPortal) public initializer {
         require(_liquidityPool != address(0), "AviBridge: LiquidityPool address cannot be zero");
         require(_token != address(0), "AviBridge: Avi L1 Token address cannot be zero");
+        require(_optimismPortal != address(0), "AviBridge: OptimismPortal address cannot be zero");
+
+        __SkyBridge_init(payable(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER), payable(AviPredeploys.L2_STANDARD_BRIDGE));
 
         LIQUIDITY_POOL = LiquidityPool(_liquidityPool);
-        flatFeeReceipient = _liquidityPool;
+        flatFeeRecipient = _liquidityPool;
         L1AviToken = _token;
-        _isPaused = false;
+        optimismPortal = _optimismPortal;
+        _isPaused = true;
+        bridgingFee = 3;
     }
 
-    /// @notice Updates the flat fee for all deposits.
-    /// @param _fee New flat fee.
-    function setFlatFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_fee < 0.005 ether, "AviBridge: _fee must be less than 0.005 ether");
-        flatFee = _fee;
-    }
-
-    /// @notice Updates the flat fee recipient for all deposits.
-    /// @param _recipient New flat fee recipient address
-    function setFlatFeeRecipient(address _recipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_recipient != address(0), "AviBridge: _recipient address cannot be zero");
-        flatFeeReceipient = _recipient;
-    }
-
-    /// @notice Updates the numerator component of the percentage based briding fee for all deposits.
-    /// @param _fee New numerator component of the percentage based briding fee.
+    /// @notice Updates the numerator component of the percentage based bridging fee for all deposits.
+    /// @param _fee New numerator component of the percentage based bridging fee.
     function setBridgingFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_fee <= 100, "AviBridge: _fee must be less than or equal to 100");
+
+        uint256 previousBridgingFee = bridgingFee;
+
         bridgingFee = _fee;
+
+        emit BridgingFeeChanged(previousBridgingFee, bridgingFee, msg.sender);
     }
 
     /// @notice Updates the paused status of the bridge
     /// @param _paused New paused status
-    function setPaused(bool _paused) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setPaused(bool _paused) external onlyPauserOrAdmin {
         _isPaused = _paused;
+
+        emit PausedChanged(_isPaused, msg.sender);
     }
 
     /// @notice Updates the the address of the other bridge contract.
     /// @param _otherBridge Address of the other bridge contract.
     function setOtherBridge(address _otherBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_otherBridge != address(0), "AviBridge: _otherBridge address cannot be zero");
+
+        address _previousOtherBridge = address(OTHER_BRIDGE);
+
         OTHER_BRIDGE = AviBridge(payable(_otherBridge));
+
+        emit OtherBridgeChanged(_previousOtherBridge, _otherBridge, msg.sender);
     }
 
     /// @notice Sets the address for the Avi L1 token so that it may avoid fees
     /// @param _token Address of the token contract
     function setAviTokenAddress(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_token != address(0), "AviBridge: _token address cannot be zero");
+
+        address _previousL1AviToken = L1AviToken;
+
         L1AviToken = _token;
+
+        emit AviTokenAddressChanged(_previousL1AviToken, L1AviToken, msg.sender);
     }
 
     /// @inheritdoc AviBridge
@@ -185,6 +258,7 @@ contract L1AviBridge is AviBridge, ISemver {
     ///                     Data supplied here will not be used to execute any code on L2 and is
     ///                     only emitted as extra data for the convenience of off-chain tooling.
     function bridgeETHTo(address _to, uint32 _minGasLimit, bytes calldata _extraData) external payable {
+        require(_to != address(0), "ETH: transfer to the zero address");
         _initiateETHDeposit(msg.sender, _to, _minGasLimit, _extraData);
     }
 
@@ -234,6 +308,7 @@ contract L1AviBridge is AviBridge, ISemver {
         virtual
         payable
     {
+        require(_to != address(0), "ERC20: transfer to the zero address");
         _initiateERC20Deposit(_l1Token, _l2Token, msg.sender, _to, _amount, _minGasLimit, _extraData);
     }
 
@@ -253,34 +328,6 @@ contract L1AviBridge is AviBridge, ISemver {
         payable
     {
         finalizeBridgeETH(_from, _to, _amount, _extraData);
-    }
-
-    /// @notice Finalizes a fast ETH bridge on this chain. Can only be triggered by the other
-    ///         AviBridge contract on the remote chain.
-    /// @param _from      Address of the sender.
-    /// @param _to        Address of the receiver.
-    /// @param _amount    Amount of ETH being bridged.
-    /// @param _extraData Extra data to be sent with the transaction. Note that the recipient will
-    ///                   not be triggered with this data, but it will be emitted and can be used
-    ///                   to identify the transaction.
-    function finalizeFastBridgeETH(
-        address _from,
-        address _to,
-        uint256 _amount,
-        bytes calldata _extraData
-    )
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        require(paused() == false, "AviBridge: paused");
-        require(_to != address(this), "AviBridge: cannot send to self");
-        require(_to != address(MESSENGER), "AviBridge: cannot send to messenger");
-
-        // Mark the ETH as available to the recipient
-        makeAvailable(_to, _amount);
-        // Emit the correct events. By default this will be _amount, but child
-        // contracts may override this function in order to emit legacy events as well.
-        _emitETHBridgeFinalized(_from, _to, _amount, _extraData);
     }
 
     /// @custom:legacy
@@ -304,92 +351,42 @@ contract L1AviBridge is AviBridge, ISemver {
         finalizeBridgeERC20(_l1Token, _l2Token, _from, _to, _amount, _extraData);
     }
 
-    /// @notice Finalizes an ERC20 fast bridge on this chain. Can only be triggered by the other
-    ///         AviBridge contract on the remote chain.
-    /// @param _localToken  Address of the ERC20 on this chain.
-    /// @param _remoteToken Address of the corresponding token on the remote chain.
-    /// @param _from        Address of the sender.
-    /// @param _to          Address of the receiver.
-    /// @param _amount      Amount of the ERC20 being bridged.
-    /// @param _extraData   Extra data to be sent with the transaction. Note that the recipient will
-    ///                     not be triggered with this data, but it will be emitted and can be used
-    ///                     to identify the transaction.
-    function finalizeFastBridgeERC20(
-        address _localToken,
-        address _remoteToken,
-        address _from,
-        address _to,
-        uint256 _amount,
-        bytes calldata _extraData
+    /// @notice Fast withdraw ETH or ERC20 from the bridge.
+    /// @param _txn The signed transation message
+    /// @param _signature The signature of the transaction
+    function fastWithdraw(
+        AviFastWithdrawal calldata _txn,
+        bytes calldata _signature
     )
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        payable
     {
-        require(paused() == false, "AviBridge: paused");
-        deposits[_localToken][_remoteToken] = deposits[_localToken][_remoteToken] - _amount;
-        // Mark the ERC20 as available to the recipient
-        makeERC20Available(_to, _localToken, _amount);
+        require(backendUser != address(0), "L1AviBridge: invalid backend user");
 
-        // Emit the correct events. By default this will be ERC20BridgeFinalized, but child
-        // contracts may override this function in order to emit legacy events as well.
-        _emitERC20BridgeFinalized(_localToken, _remoteToken, _from, _to, _amount, _extraData);
-    }
+        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
+        bytes32 structHash = keccak256(abi.encode(_WITHDRAWAL_TYPEHASH, _txn.l1_token, _txn.l2_token, _txn.from, _txn.to, _txn.amount, _txn.nonce, _txn.proof_transaction));
+        address signer = ECDSA.recover(_hashTypedDataV4(structHash), v, r, s);
 
-    /// @notice Records that a user has ETH funds available to withdraw.
-    /// This doesn't actually transfer any ETH, it just records that the user has ETH available to withdraw.
-    /// @param _recipient Address of the user.
-    /// @param _amount Amount of eth to deposit.
-    function makeAvailable(address _recipient, uint256 _amount) internal {
-        require(_amount > 0, "AviBridge: Must deposit more than 0");
-        fastBridgeBalances[_recipient] += _amount;
-    }
+        require(signer == backendUser, "invalid signature");
+        require(fastBridgeNonces[_txn.to] == _txn.nonce, "invalid nonce");
+        require(msg.value == flatFee, "AviBridge: insufficient value for fee");
 
-    /// @notice Records that a user has ERC20 funds available to withdraw.
-    /// This doesn't actually transfer any ERC20, it just records that the user has ERC20 available to withdraw.
-    /// @param _recipient Address of the user.
-    /// @param _token Address of the token contract that you want to deposit.
-    /// @param _amount Amount of the token to deposit.
-    function makeERC20Available(address _recipient, address _token, uint256 _amount) internal {
-        require(_amount > 0, "AviBridge: Must deposit more than 0");
-        fastBridgeERC20Balances[_recipient][_token] += _amount;
-    }
+        (bool feeSent, ) = address(flatFeeRecipient).call{value: flatFee}("");
+        require(feeSent, "AviBridge: failed to send fee");
 
-    /// @notice Withdraw ETH from the bridge.
-    /// @param _amount Amount of eth to withdraw.
-    function withdraw(uint256 _amount) external {
-        require(_amount > 0, "AviBridge: Must withdraw more than 0");
-        require(fastBridgeBalances[msg.sender] >= _amount, "AviBridge: Insufficient balance");
-        LIQUIDITY_POOL.sendETH(msg.sender, _amount);
-        fastBridgeBalances[msg.sender] -= _amount;
-    }
+        fastBridgeNonces[_txn.to] += 1;
 
-    /// @notice Withdraw ERC20 from the bridge.
-    /// @param _token Address of the token contract that you want to withdraw.
-    /// @param _amount Amount of the token to withdraw.
-    function withdrawERC20(address _token, uint256 _amount) external {
-        require(_amount > 0, "AviBridge: Must withdraw more than 0");
-        require(_token != address(0), "AviBridge: Token address cannot be zero");
-        require(fastBridgeERC20Balances[msg.sender][_token] >= _amount, "AviBridge: Insufficient balance");
-        LIQUIDITY_POOL.sendERC20(msg.sender, _token, _amount);
-        fastBridgeERC20Balances[msg.sender][_token] -= _amount;
-    }
+        // Transfer the tokens, ETH if the l1_token is address(0)
+        if (_txn.l1_token == address(0)) {
+            LIQUIDITY_POOL.sendETH(_txn.to, _txn.amount);
+        } else {
+            LIQUIDITY_POOL.sendERC20(_txn.to, _txn.l1_token, _txn.amount);
+        }
 
-    /// @notice Returns the available fast bridging ETH for the caller.
-    function availableETH() external view returns (uint256) {
-        return fastBridgeBalances[msg.sender];
-    }
+        bool success = SafeCall.call(optimismPortal, gasleft(), 0, _txn.proof_transaction);
+        require(success, "failed to call optimism portal");
 
-    /// @notice Returns the available fast bridging ERC20 for the caller.
-    /// @param _token Address of the token contract that you want to check the balance of.
-    function availableERC20(address _token) external view returns (uint256) {
-        return fastBridgeERC20Balances[msg.sender][_token];
-    }
-
-    /// @custom:legacy
-    /// @notice Retrieves the access of the corresponding L2 bridge contract.
-    /// @return Address of the corresponding L2 bridge contract.
-    function l2TokenBridge() external view returns (address) {
-        return address(OTHER_BRIDGE);
+        emit FastWithdraw(_txn.amount, _txn.l1_token, _txn.to, msg.sender);
     }
 
     /// @notice Internal function for initiating an ETH deposit.
@@ -398,17 +395,21 @@ contract L1AviBridge is AviBridge, ISemver {
     /// @param _minGasLimit Minimum gas limit for the deposit message on L2.
     /// @param _extraData   Optional data to forward to L2.
     function _initiateETHDeposit(address _from, address _to, uint32 _minGasLimit, bytes memory _extraData) internal {
-        uint256 totalFee = msg.value * bridgingFee / 1000 + flatFee;
+        uint256 bridgeFee = (msg.value * bridgingFee) / 1000;
+
+        // Calculate the total fee, including the flat fee
+        uint256 totalFee = bridgeFee + flatFee;
         require(msg.value >= totalFee, "AviBridge: insufficient ETH value");
 
-        uint256 bridgeFee = msg.value * bridgingFee / 1000;
         uint256 _amount = msg.value - totalFee;
 
-        (bool sentToFlatFee, ) = payable(flatFeeReceipient).call{value: flatFee}("");
+        // Transfer the flat fee to the flat fee recipient
+        (bool sentToFlatFee, ) = payable(flatFeeRecipient).call{value: flatFee}("");
         require(sentToFlatFee, "AviBridge: transfer of flat fee to flat fee pool failed");
 
-        (bool sent, ) = payable(LIQUIDITY_POOL).call{value: bridgeFee}("");
-        require(sent, "AviBridge: transfer of bridging fee to liquidity pool failed");
+        // Transfer the bridging fee to the liquidity pool
+        (bool sentToLiquidityPool, ) = payable(LIQUIDITY_POOL).call{value: bridgeFee}("");
+        require(sentToLiquidityPool, "AviBridge: transfer of bridging fee to liquidity pool failed");
 
         _initiateBridgeETH(_from, _to, _amount, _minGasLimit, _extraData);
     }
@@ -434,7 +435,7 @@ contract L1AviBridge is AviBridge, ISemver {
     {
         require(msg.value == flatFee, "AviBridge: bridging ERC20 must include sufficient ETH value");
 
-        (bool sent, ) = payable(flatFeeReceipient).call{value: msg.value}("");
+        (bool sent, ) = payable(flatFeeRecipient).call{value: msg.value}("");
         require(sent, "AviBridge: transfer of flat fee to flat fee pool failed");
 
         // For ERC20 tokens that aren't the L1AviToken, we also want to take the bridging fee
@@ -514,5 +515,24 @@ contract L1AviBridge is AviBridge, ISemver {
     {
         emit ERC20WithdrawalFinalized(_localToken, _remoteToken, _from, _to, _amount, _extraData);
         super._emitERC20BridgeFinalized(_localToken, _remoteToken, _from, _to, _amount, _extraData);
+    }
+
+    /// @notice Get the current nonce for the fast withdrawal
+    function getNonce() public view returns (uint256) {
+        return fastBridgeNonces[msg.sender];
+    }
+
+    /// @notice Splits an EIP-712 signature into r, s, and v components.
+    /// @param signature The EIP-712 signature.
+    function splitSignature(bytes memory signature) internal virtual returns (bytes32 r, bytes32 s, uint8 v) {
+        require(signature.length == 65, "invalid signature length");
+        assembly {
+            // first 32 bytes, after the length prefix
+            r := mload(add(signature, 32))
+            // second 32 bytes
+            s := mload(add(signature, 64))
+            // final byte (first byte of the next 32 bytes)
+            v := byte(0, mload(add(signature, 96)))
+        }
     }
 }

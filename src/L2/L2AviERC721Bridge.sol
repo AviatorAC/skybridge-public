@@ -4,16 +4,23 @@ pragma solidity 0.8.15;
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { AviERC721Bridge } from "src/universal/AviERC721Bridge.sol";
 import { IOptimismMintableERC721 } from "@eth-optimism/contracts-bedrock/src/universal/IOptimismMintableERC721.sol";
-import { ISemver } from "@eth-optimism/contracts-bedrock/src/universal/ISemver.sol";
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
-contract L2AviERC721Bridge is AviERC721Bridge, ISemver {
-    /// @custom:semver 1.6.0
-    string public constant version = "1.6.0";
+contract L2AviERC721Bridge is AviERC721Bridge {
+    string public constant version = "1.0.0";
 
-    /// @notice Constructs the L2ERC721Bridge contract.
-    /// @param _otherBridge Address of the ERC721 bridge on the other network.
-    constructor(address _otherBridge) AviERC721Bridge(_otherBridge) { }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(bool isTestMode) {
+        // isTestMode is used to disable the disabling of the initializers when running tests
+        if (!isTestMode) {
+            _disableInitializers();
+        }
+    }
+
+    function initialize(address _otherBridge) public initializer {
+        require(_otherBridge != address(0), "L2ERC721Bridge: other bridge cannot be address(0)");
+        __SkyBridge_init(_otherBridge);
+    }
 
     function paused() public view override returns (bool) { }
 
@@ -39,6 +46,7 @@ contract L2AviERC721Bridge is AviERC721Bridge, ISemver {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         require(_localToken != address(this), "L2ERC721Bridge: local token cannot be self");
+        require(_to != address(0), "L2ERC721Bridge: cannot transfer to the zero address");
 
         // Note that supportsInterface makes a callback to the _localToken address which is user
         // provided.

@@ -16,6 +16,8 @@ contract CommonTest is Test, OptimismMintables {
     address bob;
     address god = address(0x42069);
 
+    address payable flatFeeRecepient = payable(address(0x1337));
+
     ERC20 testTokenL1;
     address testTokenAddrL1;
 
@@ -42,8 +44,12 @@ contract CommonTest is Test, OptimismMintables {
         testTokenL2 = new TestToken();
         testTokenAddrL2 = address(testTokenL2);
 
-        liquidityPool = new LiquidityPool();
+        liquidityPool = new LiquidityPool(true);
+        liquidityPool.initialize();
         vm.deal(address(liquidityPool), 10_000 ether);
+
+        // No, god isn't technically a bridge. But shh, makes tests easier
+        liquidityPool.addBridge(god);
 
         testNFTL1 = new TestNFT();
         testNFTAddrL1 = address(testNFTL1);
@@ -66,6 +72,8 @@ contract CommonTest is Test, OptimismMintables {
 
 /// @notice An extension of our liquidity pool contract that exposes internal state for testing.
 contract TestableLiquidityPool is LiquidityPool {
+    constructor() LiquidityPool(true) {}
+
     /// @notice Returns the number of admins.
     function getNumAdmins() external view returns (uint) {
         return _numAdmins;

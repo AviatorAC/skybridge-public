@@ -2,21 +2,26 @@
 pragma solidity 0.8.15;
 
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
-import { SuperchainConfig } from "@eth-optimism/contracts-bedrock/src/L1/SuperchainConfig.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @title ERC721Bridge
 /// @notice ERC721Bridge is a base contract for the L1 and L2 ERC721 bridges.
-abstract contract AviERC721Bridge is AccessControl {
-    /// @notice Address of the bridge on the other network. This will be removed in the
-    ///         future, use `otherBridge` instead.
-    /// @custom:legacy
+abstract contract AviERC721Bridge is AccessControl, Initializable {
     address public OTHER_BRIDGE;
-    
+
     /// @notice Number of admins on the contract.
-    uint private _numAdmins = 0;
+    uint private _numAdmins;
+
+    /// @notice The address of the receiver of the flat fee. On L1 it's the address on the same chain, while on L2 it's the L1 address
+    address public flatFeeRecipient;
+
+    /// @notice The flat bridging fee for all deposits. Measured in ETH.
+    uint256 public flatFee;
+
+    /// @notice access control role pauser constant.
+    bytes32 public constant PAUSER_ROLE = keccak256("aviator.pauser_role");
 
     /// @notice Emitted when an ERC721 bridge to the other network is initiated.
     /// @param localToken  Address of the token on this domain.
@@ -50,13 +55,49 @@ abstract contract AviERC721Bridge is AccessControl {
         bytes extraData
     );
 
+    /// @notice Emitted when the Flat Fee is changed.
+    /// @param previousFlatFee  uint256 of the previous value.
+    /// @param flatFee          uint256 of the new value.
+    /// @param executedBy       Address of caller.
+    event FlatFeeChanged(
+        uint256 previousFlatFee,
+        uint256 flatFee,
+        address executedBy
+    );
+
+    modifier onlyPauserOrAdmin() {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
+                "AviBridge: function can only be called by pauser or admin role"
+        );
+        _;
+    }
+
     /// @param _otherBridge Address of the ERC721 bridge on the other network.
-    constructor(address _otherBridge) {
+    function __SkyBridge_init(address _otherBridge) public onlyInitializing {
+        // This is intentionally disabled: we cannot create an L2 bridge without an L1 bridge, and if the L1 bridge also checks
+        // that the provided address for the other bridge is not 0, then we have an infinite loop of failures.
+        // Maybe there's better ways, but for now this is the solution. This function is not supposed to be called by anything but
+        // (L1/L2)AviERC721Bridge.initialize anyways :shrug:
+
+        // require(_otherBridge != address(0), "AviERC721Bridge: _otherBridge address cannot be zero");
+
         OTHER_BRIDGE = _otherBridge;
+        flatFee = 0.002 ether;
+
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender); // make the deployer admin
         _numAdmins++;
     }
-    
+
+    /// @notice Updates the flat fee for all deposits.
+    /// @param _fee New flat fee.
+    function setFlatFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_fee < 0.005 ether, "AviBridge: _fee must be less than 0.005 ether");
+        uint256 previousFee = flatFee;
+        flatFee = _fee;
+        emit FlatFeeChanged(previousFee, flatFee, msg.sender);
+    }
+
     /// @notice Add a new admin address to the list of admins.
     /// @param _admin New admin address.
     function addAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -76,11 +117,20 @@ abstract contract AviERC721Bridge is AccessControl {
         _numAdmins--;
     }
 
+    /// @notice Add a new pauser address to the list of pausers.
+    /// @param _pauser New Pauser address.
+    function addPauser(address _pauser) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(!hasRole(PAUSER_ROLE, _pauser), "Pauser already added.");
 
-    /// @notice Legacy getter for other bridge address.
-    /// @return Address of the bridge on the other network.
-    function otherBridge() external view returns (address) {
-        return OTHER_BRIDGE;
+        _grantRole(PAUSER_ROLE, _pauser);
+    }
+
+    /// @notice Remove an pauser from the list of pausers.
+    /// @param _pauser Address to remove.
+    function removePauser(address _pauser) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(hasRole(PAUSER_ROLE, _pauser), "Address is not a recognized pauser.");
+
+        _revokeRole(PAUSER_ROLE, _pauser);
     }
 
     /// @notice This function should return true if the contract is paused.
@@ -172,4 +222,14 @@ abstract contract AviERC721Bridge is AccessControl {
     )
         internal
         virtual;
+
+    /// @notice Override renounceRole to disable it.
+    function renounceRole(bytes32, address) public pure override {
+        revert("AviERC721Bridge: renounceRole is disabled, use removeAdmin to remove yourself as an admin");
+    }
+
+    /// @notice Override revokeRole to disable it.
+    function revokeRole(bytes32 role, address) public virtual override onlyRole(getRoleAdmin(role)) {
+        revert("AviBridge: revokeRole is disabled, use removeAdmin to remove yourself as an admin");
+    }
 }

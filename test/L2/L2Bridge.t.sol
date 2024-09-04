@@ -13,7 +13,8 @@ contract L2Bridge is CommonTest, MessengerHolder {
     L2AviBridge l2Bridge;
 
     constructor() mockGod {
-        l2Bridge = new L2AviBridge(payable(AviPredeploys.L1_STANDARD_BRIDGE), payable(liquidityPool), payable(liquidityPool));
+        l2Bridge = new L2AviBridge(true);
+        l2Bridge.initialize(payable(AviPredeploys.L1_STANDARD_BRIDGE), payable(liquidityPool), payable(liquidityPool));
 
         // Make the bridge an admin of the liquidity pool
         liquidityPool.addAdmin(address(l2Bridge));
@@ -55,7 +56,7 @@ contract L2Bridge is CommonTest, MessengerHolder {
         assertEq(l2Bridge.allowedTokens(testTokenAddrL2), false);
     }
 
-    function test_L2BridgeIsNeverPaused() public {
+    function test_L2BridgeIsNeverPaused() public view {
         assertEq(l2Bridge.paused(), false);
     }
 
@@ -70,6 +71,7 @@ contract L2Bridge is CommonTest, MessengerHolder {
 
     function test_WithdrawalWorks() public mockGod {
         vm.deal(god, 1 ether);
+        l2Bridge.setFlatFee(0);
 
         vm.expectEmit(true, true, false, true);
         emit WithdrawalInitiated(
@@ -95,6 +97,7 @@ contract L2Bridge is CommonTest, MessengerHolder {
 
     function test_WithdrawalOfETHWorks() public mockGod {
         vm.deal(god, 1 ether);
+        l2Bridge.setFlatFee(0);
 
         vm.expectEmit(true, true, false, true);
         emit WithdrawalInitiated(
@@ -111,6 +114,7 @@ contract L2Bridge is CommonTest, MessengerHolder {
 
     function test_WithdrawToOfETHWorks() public mockGod {
         vm.deal(god, 1 ether);
+        l2Bridge.setFlatFee(0);
 
         vm.expectEmit(true, true, false, true);
         emit WithdrawalInitiated(
@@ -126,9 +130,12 @@ contract L2Bridge is CommonTest, MessengerHolder {
     }
 
     function test_CannotFastWithdrawETHWithoutItBeingAllowed() public mockGod {
+        vm.deal(god, 1 ether);
+        l2Bridge.setFlatFee(0);
+
         vm.expectRevert("L2AviBridge: token not allowed to be fast bridged");
 
-        l2Bridge.fastWithdrawTo(Predeploys.LEGACY_ERC20_ETH, god, 1 ether, 0, "");
+        l2Bridge.fastWithdrawTo{ value: 1 ether }(Predeploys.LEGACY_ERC20_ETH, god, 1 ether, 0, "");
     }
 
     event FastWithdrawalInitiated(
@@ -154,11 +161,12 @@ contract L2Bridge is CommonTest, MessengerHolder {
             ""
         );
 
-        l2Bridge.fastWithdrawTo{ value: 1.001 ether }(Predeploys.LEGACY_ERC20_ETH, god, 1 ether, 0, "");
+        l2Bridge.fastWithdrawTo{ value: 1 ether }(Predeploys.LEGACY_ERC20_ETH, god, 1 ether, 0, "");
     }
 
     function test_WithdrawalOfMintableTokenWorks() public mockGod {
         newL2Contract.mint(god, 1);
+        l2Bridge.setFlatFee(0);
 
         vm.expectEmit(true, true, false, true);
         emit WithdrawalInitiated(
@@ -173,7 +181,7 @@ contract L2Bridge is CommonTest, MessengerHolder {
         l2Bridge.withdraw(newL2, 1, 0, "");
     }
 
-    function test_l1TokenBridgeGetter() public {
+    function test_l1TokenBridgeGetter() public view {
         assertEq(l2Bridge.l1TokenBridge(), AviPredeploys.L1_STANDARD_BRIDGE);
     }
 

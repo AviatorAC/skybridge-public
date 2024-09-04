@@ -4,57 +4,80 @@ pragma solidity 0.8.15;
 import { AviERC721Bridge } from "src/universal/AviERC721Bridge.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { L2AviERC721Bridge } from "src/L2/L2AviERC721Bridge.sol";
-import { ISemver } from "@eth-optimism/contracts-bedrock/src/universal/ISemver.sol";
-import { Predeploys } from "@eth-optimism/contracts-bedrock/src/libraries/Predeploys.sol";
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
-import { Constants } from "@eth-optimism/contracts-bedrock/src/libraries/Constants.sol";
-import { SuperchainConfig } from "@eth-optimism/contracts-bedrock/src/L1/SuperchainConfig.sol";
 import { LiquidityPool } from "src/L1/LiquidityPool.sol";
 
 /// @title L1ERC721Bridge
 /// @notice The L1 ERC721 bridge is a contract which works together with the L2 ERC721 bridge to
 ///         make it possible to transfer ERC721 tokens from Ethereum to Optimism. This contract
 ///         acts as an escrow for ERC721 tokens deposited into L2.
-contract L1AviERC721Bridge is AviERC721Bridge, ISemver {
+contract L1AviERC721Bridge is AviERC721Bridge {
     /// @notice Mapping of L1 token to L2 token to ID to boolean, indicating if the given L1 token
     ///         by ID was deposited for a given L2 token.
     mapping(address => mapping(address => mapping(uint256 => bool))) public deposits;
 
-    /// @notice Address of the SuperchainConfig contract.
-    SuperchainConfig public superchainConfig;
-
-    /// @notice The flat bridging fee for all deposits. Measured in ETH.
-    uint256 public flatFee = 0.002 ether;
-
-    /// @notice the liquidity pool
-    LiquidityPool public LIQUIDITY_POOL;
-
     /// @notice Semantic version.
-    /// @custom:semver 2.0.0
-    string public constant version = "2.0.0";
+    /// @custom:semver 1.0.0
+    string public constant version = "1.0.0";
 
-    /// @notice Constructs the L1ERC721Bridge contract.
-    constructor(address payable _liquidityPool) AviERC721Bridge(address(0)) {
-        superchainConfig = SuperchainConfig(address(0));
-        LIQUIDITY_POOL = LiquidityPool(_liquidityPool);
+    bool internal _isPaused;
+
+    /// @notice Emitted whenever bridge paused value is set.
+    /// @param paused        bool of paused value.
+    /// @param executedBy    address of calling address.
+    event PausedChanged(
+        bool    paused,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever L2 Bridge is set.
+    /// @param previousOtherBridge      address of old L2 Bridge.
+    /// @param otherBridge              address of new L2 Bridge.
+    /// @param executedBy               address of calling address.
+    event OtherBridgeChanged(
+        address previousOtherBridge,
+        address otherBridge,
+        address executedBy
+    );
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(bool isTestMode) {
+        // isTestMode is used to disable the disabling of the initializers when running tests
+        if (!isTestMode) {
+            _disableInitializers();
+        }
     }
 
-    /// @notice Updates the flat fee for all deposits.
-    /// @param _fee New flat fee.
-    function setFlatFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_fee < 0.005 ether, "AviBridge: _fee must be less than 0.005 ether");
-        flatFee = _fee;
+    /// @notice Constructs the L1ERC721Bridge contract.
+    /// @param _l1FlatFeeRecipient Address of the flatFeeRecipient.
+    function initialize(address payable _l1FlatFeeRecipient) public initializer {
+        require(_l1FlatFeeRecipient != address(0), 'L1AviERC721Bridge: _l1FlatFeeRecipient cant be zero address');
+
+        __SkyBridge_init(address(0));
+        flatFeeRecipient = _l1FlatFeeRecipient;
+        _isPaused = true;
     }
 
     /// @inheritdoc AviERC721Bridge
     function paused() public view override returns (bool) {
-        return superchainConfig.paused();
+        return _isPaused;
+    }
+
+    /// @notice Updates the paused status of the bridge
+    /// @param _paused New paused status
+    function setPaused(bool _paused) external onlyPauserOrAdmin {
+        _isPaused = _paused;
+        emit PausedChanged(_isPaused, msg.sender);
     }
 
     /// @notice Updates the the address of the other bridge contract.
     /// @param _otherBridge Address of the other bridge contract.
     function setOtherBridge(address _otherBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_otherBridge != address(0), "L1AviERC721Bridge: _otherBridge address cannot be zero");
+        address _previousBridge = OTHER_BRIDGE;
         OTHER_BRIDGE = _otherBridge;
+
+        emit OtherBridgeChanged(_previousBridge, OTHER_BRIDGE, msg.sender);
     }
 
     /// @notice Completes an ERC721 bridge from the other domain and sends the ERC721 token to the
@@ -80,7 +103,7 @@ contract L1AviERC721Bridge is AviERC721Bridge, ISemver {
     {
         require(paused() == false, "L1ERC721Bridge: paused");
         require(_localToken != address(this), "L1ERC721Bridge: local token cannot be self");
-
+        require(_to != address(0), "L1ERC721Bridge: cannot transfer to the zero address");
         // Checks that the L1/L2 NFT pair has a token ID that is escrowed in the L1 Bridge.
         require(
             deposits[_localToken][_remoteToken][_tokenId] == true,
@@ -114,8 +137,8 @@ contract L1AviERC721Bridge is AviERC721Bridge, ISemver {
         require(_remoteToken != address(0), "L1ERC721Bridge: remote token cannot be address(0)");
         require(msg.value == flatFee, "L1ERC721Bridge: bridging ERC721 must include sufficient ETH value");
 
-        (bool sent, ) = payable(LIQUIDITY_POOL).call{value: msg.value}("");
-        require(sent, "L1ERC721Bridge: failed to send ETH to liquidity pool");
+        (bool sent, ) = payable(flatFeeRecipient).call{value: msg.value}("");
+        require(sent, "L1ERC721Bridge: failed to send ETH to fee recipient");
 
         // Lock token into bridge
         deposits[_localToken][_remoteToken][_tokenId] = true;

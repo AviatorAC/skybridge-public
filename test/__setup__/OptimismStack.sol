@@ -5,6 +5,7 @@ pragma solidity 0.8.15;
 import { SuperchainConfig } from "@eth-optimism/contracts-bedrock/src/L1/SuperchainConfig.sol";
 
 import { CommonTest } from 'test/__setup__/CommonTest.sol';
+import { MockOptimismPortal } from 'test/__setup__/OptimismPortal.sol';
 
 contract OptimismStack is CommonTest {
     SuperchainConfig superchainConfig;
@@ -12,9 +13,15 @@ contract OptimismStack is CommonTest {
 
     address superchainGuardian;
 
+    MockOptimismPortal mockOptimismPortal;
+    address mockOptimismPortalAddr;
+
     constructor() mockGod {
         superchainConfig = new SuperchainConfig{ salt: keccak256(bytes("salty")) }();
         superchainConfigAddr = address(superchainConfig);
+
+        mockOptimismPortal = new MockOptimismPortal();
+        mockOptimismPortalAddr = address(mockOptimismPortal);
 
         superchainGuardian = makeAddr("superchainGuardian");
 

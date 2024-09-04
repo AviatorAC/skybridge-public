@@ -10,39 +10,43 @@ import { IOptimismMintableERC20, ILegacyMintableERC20 } from "@eth-optimism/cont
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
 import { OptimismMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/OptimismMintableERC20.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { EIP712Upgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
 /// @custom:upgradeable
 /// @title AviBridge
 /// @notice AviBridge is a base contract for the L1 and L2 standard ERC20 bridges. It handles
 ///         the core bridging logic, including escrowing tokens that are native to the local chain
 ///         and minting/burning tokens that are native to the remote chain.
-abstract contract AviBridge is AccessControl {
+abstract contract AviBridge is AccessControl, EIP712Upgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice Number of admins on the contract.
-    uint private _numAdmins = 0;
+    uint256 private _numAdmins;
 
     /// @notice The L2 gas limit set when eth is depoisited using the receive() function.
     uint32 internal constant RECEIVE_DEFAULT_GAS_LIMIT = 200_000;
 
     /// @notice Messenger contract on this domain.
-    CrossDomainMessenger internal immutable MESSENGER;
+    CrossDomainMessenger public MESSENGER;
 
     /// @notice Corresponding bridge on the other domain.
-    AviBridge internal OTHER_BRIDGE;
+    AviBridge public OTHER_BRIDGE;
 
-    /// @custom:legacy
-    /// @custom:spacer messenger
-    /// @notice Spacer for backwards compatibility.
-    address private spacer_0_2_20;
+    /// @notice The EIP712 transaction signer
+    address public backendUser;
 
-    /// @custom:legacy
-    /// @custom:spacer l2TokenBridge
-    /// @notice Spacer for backwards compatibility.
-    address private spacer_1_0_20;
+    /// @notice access control role pauser constant.
+    bytes32 public constant PAUSER_ROLE = keccak256("aviator.pauser_role");
 
     /// @notice Mapping that stores deposits for a given pair of local and remote tokens.
     mapping(address => mapping(address => uint256)) public deposits;
+
+    /// @notice The address of the receiver of the flat fee. On L1 it's the address on the same chain, while on L2 it's the L1 address
+    address public flatFeeRecipient;
+
+    /// @notice The flat bridging fee for all deposits. Measured in ETH.
+    uint256 public flatFee;
 
     /// @notice Emitted when an ETH bridge is initiated to the other chain.
     /// @param from      Address of the sender.
@@ -90,6 +94,36 @@ abstract contract AviBridge is AccessControl {
         bytes extraData
     );
 
+    /// @notice Emitted when the backend address is changed.
+    /// @param oldBackend  Address of previous backend.
+    /// @param newBackend  Address of new backend.
+    /// @param executedBy  Address of caller.
+    event BackendChanged(
+        address indexed oldBackend,
+        address indexed newBackend,
+        address indexed executedBy
+    );
+
+    /// @notice Emitted when the Flat Fee Recipient address is changed.
+    /// @param previousFlatFeeRecipient     Address of previsous Flat Fee Recipient.
+    /// @param flatFeeRecipient             Address of new Flat Fee Recipient.
+    /// @param executedBy                   Address of caller.
+    event FlatFeeRecipientChanged(
+        address previousFlatFeeRecipient,
+        address flatFeeRecipient,
+        address executedBy
+    );
+
+    /// @notice Emitted when the Flat Fee is changed.
+    /// @param previousFlatFee  uint256 of the previous value.
+    /// @param flatFee          uint256 of the new value.
+    /// @param executedBy       Address of caller.
+    event FlatFeeChanged(
+        uint256 previousFlatFee,
+        uint256 flatFee,
+        address executedBy
+    );
+
     /// @notice Only allow EOAs to call the functions. Note that this is not safe against contracts
     ///         calling code within their constructors, but also doesn't really matter since we're
     ///         just trying to prevent users accidentally depositing with smart contract wallets.
@@ -107,13 +141,47 @@ abstract contract AviBridge is AccessControl {
         _;
     }
 
+    modifier onlyPauserOrAdmin() {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
+                "AviBridge: function can only be called by pauser or admin role"
+        );
+        _;
+    }
+
     /// @param _messenger   Address of CrossDomainMessenger on this network.
     /// @param _otherBridge Address of the other AviBridge contract.
-    constructor(address payable _messenger, address payable _otherBridge) {
+    function __SkyBridge_init(address payable _messenger, address payable _otherBridge) public onlyInitializing {
         MESSENGER = CrossDomainMessenger(_messenger);
         OTHER_BRIDGE = AviBridge(_otherBridge);
+
+        __EIP712_init("SkyBridge", "1");
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender); // make the deployer admin
-        _numAdmins++;
+        _numAdmins = 1;
+        flatFee = 0.001 ether;
+    }
+
+    /// @notice Updates the flat fee recipient for all deposits.
+    /// @param _recipient New flat fee recipient address
+    function setFlatFeeRecipient(address _recipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_recipient != address(0), "AviBridge: _recipient address cannot be zero");
+
+        address previousFlatFeeRecipient = flatFeeRecipient;
+
+        flatFeeRecipient = _recipient;
+
+        emit FlatFeeRecipientChanged(previousFlatFeeRecipient, flatFeeRecipient, msg.sender);
+    }
+
+    /// @notice Updates the flat fee for all deposits.
+    /// @param _fee New flat fee.
+    function setFlatFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_fee <= 0.005 ether, "AviBridge: _fee must be less than or equal to 0.005 ether");
+
+        uint256 previousFee = flatFee;
+        flatFee = _fee;
+
+        emit FlatFeeChanged(previousFee, flatFee, msg.sender);
     }
 
     /// @notice Add a new admin address to the list of admins.
@@ -135,21 +203,38 @@ abstract contract AviBridge is AccessControl {
         _numAdmins--;
     }
 
+    /// @notice Add a new pauser address to the list of pausers.
+    /// @param _pauser New Pauser address.
+    function addPauser(address _pauser) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(!hasRole(PAUSER_ROLE, _pauser), "Pauser already added.");
+
+        _grantRole(PAUSER_ROLE, _pauser);
+    }
+
+    /// @notice Remove an pauser from the list of pausers.
+    /// @param _pauser Address to remove.
+    function removePauser(address _pauser) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(hasRole(PAUSER_ROLE, _pauser), "Address is not a recognized pauser.");
+
+        _revokeRole(PAUSER_ROLE, _pauser);
+    }
+
+    /// @notice set a new backend address.
+    /// @param _backend New backend address.
+    function setBackend(address _backend) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_backend != address(0), "AviBridge: address cannot be zero.");
+        require(_backend != backendUser, "AviBridge: that address is already the backend user.");
+
+        address _previousBackend = backendUser;
+
+        backendUser = _backend;
+
+        emit BackendChanged(_previousBackend, _backend, msg.sender);
+    }
+
     /// @notice Allows EOAs to bridge ETH by sending directly to the bridge.
     ///         Must be implemented by contracts that inherit.
     receive() external payable virtual;
-
-    /// @notice Getter for messenger contract.
-    /// @return Messenger contract on this domain.
-    function messenger() external view returns (CrossDomainMessenger) {
-        return MESSENGER;
-    }
-
-    /// @notice Getter for the other bridge.
-    /// @return The bridge contract on the other network.
-    function otherBridge() external view returns (AviBridge) {
-        return OTHER_BRIDGE;
-    }
 
     /// @notice This function should return true if the contract is paused.
     ///         On L1 this function will check the SuperchainConfig for its paused status.
@@ -179,6 +264,7 @@ abstract contract AviBridge is AccessControl {
         require(msg.value == _amount, "AviBridge: amount sent does not match amount required");
         require(_to != address(this), "AviBridge: cannot send to self");
         require(_to != address(MESSENGER), "AviBridge: cannot send to messenger");
+        require(_to != address(0), "AviBridge: cannot send to zero address");
 
         // Emit the correct events. By default this will be _amount, but child
         // contracts may override this function in order to emit legacy events as well.
@@ -210,6 +296,8 @@ abstract contract AviBridge is AccessControl {
         onlyOtherBridge
     {
         require(paused() == false, "AviBridge: paused");
+        require(_to != address(0), "AviBridge: cannot transfer to the zero address");
+
         if (_isOptimismMintableERC20(_localToken)) {
             require(
                 _isCorrectTokenPair(_localToken, _remoteToken),
@@ -275,8 +363,12 @@ abstract contract AviBridge is AccessControl {
         uint32 _minGasLimit,
         bytes memory _extraData
     )
-        internal
+    internal
     {
+        uint256 balanceBefore;
+        uint256 balanceAfter;
+        uint256 actualAmount;
+
         if (_isOptimismMintableERC20(_localToken)) {
             require(
                 _isCorrectTokenPair(_localToken, _remoteToken),
@@ -284,14 +376,23 @@ abstract contract AviBridge is AccessControl {
             );
 
             OptimismMintableERC20(_localToken).burn(_from, _amount);
+
+            actualAmount = _amount;
         } else {
+            balanceBefore = IERC20(_localToken).balanceOf(address(this));
+
             IERC20(_localToken).safeTransferFrom(_from, address(this), _amount);
-            deposits[_localToken][_remoteToken] = deposits[_localToken][_remoteToken] + _amount;
+
+            balanceAfter = IERC20(_localToken).balanceOf(address(this));
+
+            actualAmount = balanceAfter - balanceBefore;
+
+            deposits[_localToken][_remoteToken] += actualAmount;
         }
 
         // Emit the correct events. By default this will be ERC20BridgeInitiated, but child
         // contracts may override this function in order to emit legacy events as well.
-        _emitERC20BridgeInitiated(_localToken, _remoteToken, _from, _to, _amount, _extraData);
+        _emitERC20BridgeInitiated(_localToken, _remoteToken, _from, _to, actualAmount, _extraData);
 
         MESSENGER.sendMessage(
             address(OTHER_BRIDGE),
@@ -304,7 +405,7 @@ abstract contract AviBridge is AccessControl {
                 _localToken,
                 _from,
                 _to,
-                _amount,
+                actualAmount,
                 _extraData
             ),
             _minGasLimit
@@ -412,5 +513,15 @@ abstract contract AviBridge is AccessControl {
         virtual
     {
         emit ERC20BridgeFinalized(_localToken, _remoteToken, _from, _to, _amount, _extraData);
+    }
+
+    /// @notice Override renounceRole to disable it.
+    function renounceRole(bytes32, address) public pure override {
+        revert("AviBridge: renounceRole is disabled, use removeAdmin to remove yourself as an admin");
+    }
+
+    /// @notice Override revokeRole to disable it.
+    function revokeRole(bytes32 role, address) public virtual override onlyRole(getRoleAdmin(role)) {
+        revert("AviBridge: revokeRole is disabled, use removeAdmin to remove yourself as an admin");
     }
 }

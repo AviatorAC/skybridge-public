@@ -13,12 +13,25 @@ contract L2ERC721BridgeTest is CommonTest, MessengerHolder {
     L2AviERC721Bridge l2Bridge;
 
     constructor() mockGod {
-        l2Bridge = new L2AviERC721Bridge(AviPredeploys.L1_AVI_STANDARD_BRIDGE);
+        l2Bridge = new L2AviERC721Bridge(true);
+        l2Bridge.initialize(AviPredeploys.L1_AVI_STANDARD_BRIDGE);
     }
 
     function test() public override(CommonTest, MessengerHolder) {}
 
-    function test_L2BridgeIsNeverPaused() public {
+    function test_RevertWhenTryingToDeployL2ERC721BridgeWithZeroAddress() public {
+        l2Bridge = new L2AviERC721Bridge(true);
+        vm.expectRevert("L2ERC721Bridge: other bridge cannot be address(0)");
+        l2Bridge.initialize(address(0));
+    }
+
+    function test_CreatingBridgeWithValidAddress() public {
+        L2AviERC721Bridge bridge = new L2AviERC721Bridge(true);
+        bridge.initialize(AviPredeploys.L1_AVI_STANDARD_BRIDGE);
+        assertEq(address(bridge.OTHER_BRIDGE()), AviPredeploys.L1_AVI_STANDARD_BRIDGE);
+    }
+
+    function test_L2BridgeIsNeverPaused() public view {
         assertEq(l2Bridge.paused(), false);
     }
 
@@ -38,6 +51,12 @@ contract L2ERC721BridgeTest is CommonTest, MessengerHolder {
         vm.expectRevert("L2ERC721Bridge: wrong remote token for Optimism Mintable ERC721 local token");
 
         l2Bridge.finalizeBridgeERC721(nftL1, nftL1, god, god, 1, "");
+    }
+
+    function test_RevertWhenTryingToFinalizeBridgingToZeroAddress() public mockGod {
+        vm.expectRevert("L2ERC721Bridge: cannot transfer to the zero address");
+
+        l2Bridge.finalizeBridgeERC721(nftL1, nftL1, god, address(0), 1, "");
     }
 
     function test_FinalizeBridgeERC721() public mockGod {
