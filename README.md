@@ -14,6 +14,8 @@ Here is a list of _possible_ issues that we are aware of at this time, and will 
   - We are discussing internally if this is something that should be changed, or if it is ok to have as a sane default
 - The default messenger constants in `src/libraries/AviPredeploys.sol` being set to the wrong values for mainnet deploys
   - We are aware of this, and will be implementing an update for passing this in the `initialize()` calls in the near future!
+- `_numAdmin` not being properly tracked in all contracts when upgrading
+  - Note: We don't actually know if this is an issue, but it is something we are looking into and testing out!
 
 ## How to run tests yourself
 
