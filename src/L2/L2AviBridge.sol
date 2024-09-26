@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { Predeploys } from "@eth-optimism/contracts-bedrock/src/libraries/Predeploys.sol";
-import { AviPredeploys } from "src/libraries/AviPredeploys.sol";
 import { AviBridge } from "src/universal/AviBridge.sol";
 import { OptimismMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/OptimismMintableERC20.sol";
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
@@ -83,7 +82,7 @@ contract L2AviBridge is AviBridge {
     );
 
     /// @notice Semantic version.
-    string public constant version = "1.0.0";
+    string public constant version = "1.1.0";
 
     /// @notice Mapping that stores deposits for a given pair of local and remote tokens.
     mapping(address => bool) public allowedTokens;
@@ -102,12 +101,21 @@ contract L2AviBridge is AviBridge {
     /// @param _otherBridge Address of the L1AviBridge.
     /// @param _liquidityPool Address of the liquidityPool.
     /// @param _l1FeeRecipient Address of the l1FeeRecipient.
-    function initialize(address payable _otherBridge, address payable _liquidityPool, address payable _l1FeeRecipient) public initializer {
+    function initialize(
+        // Optimism stack
+        address payable _l2CrossDomainMessenger,
+        // AVI stack
+        address payable _otherBridge,
+        address payable _liquidityPool,
+        address payable _l1FeeRecipient
+    ) public initializer {
+        require(_l2CrossDomainMessenger != address(0), "AviBridge: _l2CrossDomainMessenger address cannot be zero");
+
         require(_otherBridge != address(0), "AviBridge: _otherBridge address cannot be zero");
         require(_liquidityPool != address(0), "AviBridge: _liquidityPool address cannot be zero");
         require(_l1FeeRecipient != address(0), "AviBridge: _l1FeeRecipient address cannot be zero");
 
-        __SkyBridge_init(payable(AviPredeploys.L2_CROSS_DOMAIN_MESSENGER), _otherBridge);
+        __SkyBridge_init(_l2CrossDomainMessenger, _otherBridge);
 
         liquidityPool = _liquidityPool;
         flatFeeRecipient = _l1FeeRecipient;

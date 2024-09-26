@@ -75,16 +75,6 @@ contract L1AviBridge is AviBridge {
         address executedBy
     );
 
-    /// @notice Emitted whenever other Bridge is set.
-    /// @param previousOtherBridge    address of previous other Bridge.
-    /// @param otherBridge            address of new other Bridge.
-    /// @param executedBy             address of calling address.
-    event OtherBridgeChanged(
-        address previousOtherBridge,
-        address otherBridge,
-        address executedBy
-    );
-
     /// @notice Emitted whenever Avi token address is set.
     /// @param previousAviTokenAddress      address of old avi Token.
     /// @param aviTokenAddress              address of new avi Token.
@@ -125,7 +115,7 @@ contract L1AviBridge is AviBridge {
     );
 
     /// @notice Semantic version.
-    string public constant version = "1.0.0";
+    string public constant version = "1.1.0";
 
     /// @notice The numerator component of the percentage based briding fee for all deposits.
     uint256 public bridgingFee;
@@ -167,17 +157,29 @@ contract L1AviBridge is AviBridge {
         }
     }
 
-    function initialize(address payable _liquidityPool, address _token, address payable _optimismPortal) public initializer {
-        require(_liquidityPool != address(0), "AviBridge: LiquidityPool address cannot be zero");
-        require(_token != address(0), "AviBridge: Avi L1 Token address cannot be zero");
+    function initialize(
+        // Optimism stack first
+        address payable _L1CrossDomainMessenger,
+        address payable _optimismPortal,
+        // AVI stack after
+        address payable _liquidityPool,
+        address _token
+    ) public initializer {
+        require(_L1CrossDomainMessenger != address(0), "AviBridge: L1CrossDomainMessenger address cannot be zero");
         require(_optimismPortal != address(0), "AviBridge: OptimismPortal address cannot be zero");
 
-        __SkyBridge_init(payable(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER), payable(AviPredeploys.L2_STANDARD_BRIDGE));
+        require(_liquidityPool != address(0), "AviBridge: LiquidityPool address cannot be zero");
+        require(_token != address(0), "AviBridge: Avi L1 Token address cannot be zero");
+
+        __SkyBridge_init(_L1CrossDomainMessenger, payable(AviPredeploys.L2_STANDARD_BRIDGE));
+
+        optimismPortal = _optimismPortal;
 
         LIQUIDITY_POOL = LiquidityPool(_liquidityPool);
-        flatFeeRecipient = _liquidityPool;
         L1AviToken = _token;
-        optimismPortal = _optimismPortal;
+
+        flatFeeRecipient = _liquidityPool;
+
         _isPaused = true;
         bridgingFee = 3;
     }
@@ -200,18 +202,6 @@ contract L1AviBridge is AviBridge {
         _isPaused = _paused;
 
         emit PausedChanged(_isPaused, msg.sender);
-    }
-
-    /// @notice Updates the the address of the other bridge contract.
-    /// @param _otherBridge Address of the other bridge contract.
-    function setOtherBridge(address _otherBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_otherBridge != address(0), "AviBridge: _otherBridge address cannot be zero");
-
-        address _previousOtherBridge = address(OTHER_BRIDGE);
-
-        OTHER_BRIDGE = AviBridge(payable(_otherBridge));
-
-        emit OtherBridgeChanged(_previousOtherBridge, _otherBridge, msg.sender);
     }
 
     /// @notice Sets the address for the Avi L1 token so that it may avoid fees

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract LiquidityPool is AccessControl, Initializable {
+contract LiquidityPool is AccessControlUpgradeable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant BRIDGE_ROLE = keccak256("aviator.bridge_role");
@@ -14,6 +13,11 @@ contract LiquidityPool is AccessControl, Initializable {
     uint256 internal _numAdmins;
 
     string public constant version = "1.0.0";
+
+    /**
+     * @dev This gap is used to allow further fields on base contracts without causing possible storage clashes.
+     */
+    uint256[49] private __gap;
 
     /// @notice Emitted when a bridge is added.
     /// @param bridgeAddress Address of the bridge.
@@ -76,6 +80,8 @@ contract LiquidityPool is AccessControl, Initializable {
     }
 
     function initialize() public initializer {
+        __AccessControl_init();
+
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender); // make the deployer admin
         _numAdmins = 1;
     }

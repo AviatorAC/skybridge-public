@@ -9,7 +9,7 @@ import { SafeCall } from "@eth-optimism/contracts-bedrock/src/libraries/SafeCall
 import { IOptimismMintableERC20, ILegacyMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/IOptimismMintableERC20.sol";
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
 import { OptimismMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/OptimismMintableERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { EIP712Upgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
@@ -18,7 +18,7 @@ import { EIP712Upgradeable } from "@openzeppelin/contracts-upgradeable/utils/cry
 /// @notice AviBridge is a base contract for the L1 and L2 standard ERC20 bridges. It handles
 ///         the core bridging logic, including escrowing tokens that are native to the local chain
 ///         and minting/burning tokens that are native to the remote chain.
-abstract contract AviBridge is AccessControl, EIP712Upgradeable {
+abstract contract AviBridge is AccessControlUpgradeable, EIP712Upgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice Number of admins on the contract.
@@ -47,6 +47,11 @@ abstract contract AviBridge is AccessControl, EIP712Upgradeable {
 
     /// @notice The flat bridging fee for all deposits. Measured in ETH.
     uint256 public flatFee;
+
+    /**
+     * @dev This gap is used to allow further fields on base contracts without causing possible storage clashes.
+     */
+    uint256[49] private __gap;
 
     /// @notice Emitted when an ETH bridge is initiated to the other chain.
     /// @param from      Address of the sender.
@@ -124,6 +129,16 @@ abstract contract AviBridge is AccessControl, EIP712Upgradeable {
         address executedBy
     );
 
+    /// @notice Emitted whenever L2 Bridge is set.
+    /// @param previousOtherBridge      address of old L2 Bridge.
+    /// @param otherBridge              address of new L2 Bridge.
+    /// @param executedBy               address of calling address.
+    event OtherBridgeChanged(
+        address previousOtherBridge,
+        address otherBridge,
+        address executedBy
+    );
+
     /// @notice Only allow EOAs to call the functions. Note that this is not safe against contracts
     ///         calling code within their constructors, but also doesn't really matter since we're
     ///         just trying to prevent users accidentally depositing with smart contract wallets.
@@ -156,9 +171,23 @@ abstract contract AviBridge is AccessControl, EIP712Upgradeable {
         OTHER_BRIDGE = AviBridge(_otherBridge);
 
         __EIP712_init("SkyBridge", "1");
+        __AccessControl_init();
+
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender); // make the deployer admin
         _numAdmins = 1;
         flatFee = 0.001 ether;
+    }
+
+    /// @notice Updates the the address of the other bridge contract.
+    /// @param _otherBridge Address of the other bridge contract.
+    function setOtherBridge(address _otherBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_otherBridge != address(0), "AviBridge: _otherBridge address cannot be zero");
+
+        address _previousOtherBridge = address(OTHER_BRIDGE);
+
+        OTHER_BRIDGE = AviBridge(payable(_otherBridge));
+
+        emit OtherBridgeChanged(_previousOtherBridge, _otherBridge, msg.sender);
     }
 
     /// @notice Updates the flat fee recipient for all deposits.

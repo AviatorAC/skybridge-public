@@ -7,7 +7,7 @@ import { IOptimismMintableERC721 } from "@eth-optimism/contracts-bedrock/src/uni
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 contract L2AviERC721Bridge is AviERC721Bridge {
-    string public constant version = "1.0.0";
+    string public constant version = "1.1.0";
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(bool isTestMode) {

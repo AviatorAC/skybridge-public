@@ -20,7 +20,7 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
 
     constructor() mockGod {
         l1Bridge = new L1AviBridge(true);
-        l1Bridge.initialize(payable(liquidityPool), testTokenAddrL1, payable(mockOptimismPortalAddr));
+        l1Bridge.initialize(payable(address(l1Messenger)), payable(mockOptimismPortalAddr), payable(liquidityPool), testTokenAddrL1);
 
         l1Bridge.setBackend(god);
 
@@ -352,7 +352,7 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
 
     function test_RevertWhenTryingToSendETHToNonPayableLiquidityPool() public mockGod {
         L1AviBridge noPayableLiquidityPool = new L1AviBridge(true);
-        noPayableLiquidityPool.initialize(payable(address(noMoneyAllowed)), testTokenAddrL1, payable(mockOptimismPortalAddr));
+        noPayableLiquidityPool.initialize(payable(address(l1Messenger)), payable(mockOptimismPortalAddr), payable(address(noMoneyAllowed)), testTokenAddrL1);
         vm.deal(god, 1 ether);
 
         vm.expectRevert("Address: call to non-payable");
@@ -362,7 +362,7 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
 
     function test_RevertWhenTryingToSendERC20ToNonPayableLiquidityPool() public mockGod {
         L1AviBridge noPayableLiquidityPool = new L1AviBridge(true);
-        noPayableLiquidityPool.initialize(payable(address(noMoneyAllowed)), testTokenAddrL2, payable(mockOptimismPortalAddr));
+        noPayableLiquidityPool.initialize(payable(address(l1Messenger)), payable(mockOptimismPortalAddr), payable(address(noMoneyAllowed)), testTokenAddrL2);
         vm.deal(god, 1 ether);
         noPayableLiquidityPool.setFlatFee(0.001 ether);
 
@@ -418,7 +418,7 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
 
     function test_RevertWhenFailingToSendBridgingFeeToLiquidityPool() public mockGod {
         L1AviBridge testBridge = new L1AviBridge(true);
-        testBridge.initialize(payable(address(noMoneyAllowed)), testTokenAddrL1, payable(mockOptimismPortalAddr));
+        testBridge.initialize(payable(address(l1Messenger)), payable(mockOptimismPortalAddr), payable(address(noMoneyAllowed)), testTokenAddrL1);
         testBridge.setBridgingFee(25);
         testBridge.setFlatFee(0.001 ether);
         testBridge.setFlatFeeRecipient(god);

@@ -18,7 +18,7 @@ contract L1AviERC721Bridge is AviERC721Bridge {
 
     /// @notice Semantic version.
     /// @custom:semver 1.0.0
-    string public constant version = "1.0.0";
+    string public constant version = "1.1.0";
 
     bool internal _isPaused;
 
@@ -27,16 +27,6 @@ contract L1AviERC721Bridge is AviERC721Bridge {
     /// @param executedBy    address of calling address.
     event PausedChanged(
         bool    paused,
-        address executedBy
-    );
-
-    /// @notice Emitted whenever L2 Bridge is set.
-    /// @param previousOtherBridge      address of old L2 Bridge.
-    /// @param otherBridge              address of new L2 Bridge.
-    /// @param executedBy               address of calling address.
-    event OtherBridgeChanged(
-        address previousOtherBridge,
-        address otherBridge,
         address executedBy
     );
 
@@ -54,6 +44,7 @@ contract L1AviERC721Bridge is AviERC721Bridge {
         require(_l1FlatFeeRecipient != address(0), 'L1AviERC721Bridge: _l1FlatFeeRecipient cant be zero address');
 
         __SkyBridge_init(address(0));
+
         flatFeeRecipient = _l1FlatFeeRecipient;
         _isPaused = true;
     }
@@ -68,16 +59,6 @@ contract L1AviERC721Bridge is AviERC721Bridge {
     function setPaused(bool _paused) external onlyPauserOrAdmin {
         _isPaused = _paused;
         emit PausedChanged(_isPaused, msg.sender);
-    }
-
-    /// @notice Updates the the address of the other bridge contract.
-    /// @param _otherBridge Address of the other bridge contract.
-    function setOtherBridge(address _otherBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_otherBridge != address(0), "L1AviERC721Bridge: _otherBridge address cannot be zero");
-        address _previousBridge = OTHER_BRIDGE;
-        OTHER_BRIDGE = _otherBridge;
-
-        emit OtherBridgeChanged(_previousBridge, OTHER_BRIDGE, msg.sender);
     }
 
     /// @notice Completes an ERC721 bridge from the other domain and sends the ERC721 token to the

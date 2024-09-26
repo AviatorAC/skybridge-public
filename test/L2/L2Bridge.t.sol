@@ -14,7 +14,7 @@ contract L2Bridge is CommonTest, MessengerHolder {
 
     constructor() mockGod {
         l2Bridge = new L2AviBridge(true);
-        l2Bridge.initialize(payable(AviPredeploys.L1_STANDARD_BRIDGE), payable(liquidityPool), payable(liquidityPool));
+        l2Bridge.initialize(payable(address(l2Messenger)), payable(AviPredeploys.L1_STANDARD_BRIDGE), payable(liquidityPool), payable(liquidityPool));
 
         // Make the bridge an admin of the liquidity pool
         liquidityPool.addAdmin(address(l2Bridge));

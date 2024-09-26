@@ -3,12 +3,11 @@ pragma solidity 0.8.15;
 
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @title ERC721Bridge
 /// @notice ERC721Bridge is a base contract for the L1 and L2 ERC721 bridges.
-abstract contract AviERC721Bridge is AccessControl, Initializable {
+abstract contract AviERC721Bridge is AccessControlUpgradeable {
     address public OTHER_BRIDGE;
 
     /// @notice Number of admins on the contract.
@@ -22,6 +21,11 @@ abstract contract AviERC721Bridge is AccessControl, Initializable {
 
     /// @notice access control role pauser constant.
     bytes32 public constant PAUSER_ROLE = keccak256("aviator.pauser_role");
+
+    /**
+     * @dev This gap is used to allow further fields on base contracts without causing possible storage clashes.
+     */
+    uint256[49] private __gap;
 
     /// @notice Emitted when an ERC721 bridge to the other network is initiated.
     /// @param localToken  Address of the token on this domain.
@@ -65,6 +69,26 @@ abstract contract AviERC721Bridge is AccessControl, Initializable {
         address executedBy
     );
 
+    /// @notice Emitted when the Flat Fee Recipient address is changed.
+    /// @param previousFlatFeeRecipient     Address of previsous Flat Fee Recipient.
+    /// @param flatFeeRecipient             Address of new Flat Fee Recipient.
+    /// @param executedBy                   Address of caller.
+    event FlatFeeRecipientChanged(
+        address previousFlatFeeRecipient,
+        address flatFeeRecipient,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever L2 Bridge is set.
+    /// @param previousOtherBridge      address of old L2 Bridge.
+    /// @param otherBridge              address of new L2 Bridge.
+    /// @param executedBy               address of calling address.
+    event OtherBridgeChanged(
+        address previousOtherBridge,
+        address otherBridge,
+        address executedBy
+    );
+
     modifier onlyPauserOrAdmin() {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
@@ -85,8 +109,32 @@ abstract contract AviERC721Bridge is AccessControl, Initializable {
         OTHER_BRIDGE = _otherBridge;
         flatFee = 0.002 ether;
 
+        __AccessControl_init();
+
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender); // make the deployer admin
         _numAdmins++;
+    }
+
+    /// @notice Updates the the address of the other bridge contract.
+    /// @param _otherBridge Address of the other bridge contract.
+    function setOtherBridge(address _otherBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_otherBridge != address(0), "AviBridge: _otherBridge address cannot be zero");
+        address _previousBridge = OTHER_BRIDGE;
+        OTHER_BRIDGE = _otherBridge;
+
+        emit OtherBridgeChanged(_previousBridge, OTHER_BRIDGE, msg.sender);
+    }
+
+    /// @notice Updates the flat fee recipient for all deposits.
+    /// @param _recipient New flat fee recipient address
+    function setFlatFeeRecipient(address _recipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_recipient != address(0), "AviBridge: _recipient address cannot be zero");
+
+        address previousFlatFeeRecipient = flatFeeRecipient;
+
+        flatFeeRecipient = _recipient;
+
+        emit FlatFeeRecipientChanged(previousFlatFeeRecipient, flatFeeRecipient, msg.sender);
     }
 
     /// @notice Updates the flat fee for all deposits.
