@@ -8,7 +8,7 @@
 		"coverage:lcov": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage --ignore-errors inconsistent"
 	},
 	"dependencies": {
-		"@eth-optimism/contracts-bedrock": "patch:@eth-optimism/contracts-bedrock@https%3A//gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1#~/.yarn/patches/@eth-optimism-contracts-bedrock-https-e91c1d4a6a.patch",
+		"@eth-optimism/contracts-bedrock": "^0.17.3",
 		"@openzeppelin/contracts": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?dc44c9f1a4c3b10af99492eed84f83ed244203f6",
 		"@openzeppelin/contracts-upgradeable": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?2d081f24cac1a867f6f73d512f2022e1fa987854",
 		"@rari-capital/solmate": "https://gitpkg.now.sh/transmissions11/solmate?8f9b23f8838670afda0fd8983f2c41e8037ae6bc",

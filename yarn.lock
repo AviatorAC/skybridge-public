@@ -9,7 +9,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@aviator/root@workspace:."
   dependencies:
-    "@eth-optimism/contracts-bedrock": "patch:@eth-optimism/contracts-bedrock@https%3A//gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1#~/.yarn/patches/@eth-optimism-contracts-bedrock-https-e91c1d4a6a.patch"
+    "@eth-optimism/contracts-bedrock": "npm:^0.17.3"
     "@openzeppelin/contracts": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts/contracts?dc44c9f1a4c3b10af99492eed84f83ed244203f6"
     "@openzeppelin/contracts-upgradeable": "https://gitpkg.now.sh/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts?2d081f24cac1a867f6f73d512f2022e1fa987854"
     "@rari-capital/solmate": "https://gitpkg.now.sh/transmissions11/solmate?8f9b23f8838670afda0fd8983f2c41e8037ae6bc"
@@ -18,17 +18,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@eth-optimism/contracts-bedrock@https://gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1":
-  version: 0.16.2
-  resolution: "@eth-optimism/contracts-bedrock@https://gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1"
-  checksum: 10/8663c766e323f292a2e1fe329326854f51ccd0355bf6848acd1873c69ed841b040a0dc8636135ac8e52a59d6b978ed7931a772af1ec869b807a58cc286e8ebf2
-  languageName: node
-  linkType: hard
-
-"@eth-optimism/contracts-bedrock@patch:@eth-optimism/contracts-bedrock@https%3A//gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1#~/.yarn/patches/@eth-optimism-contracts-bedrock-https-e91c1d4a6a.patch":
-  version: 0.16.2
-  resolution: "@eth-optimism/contracts-bedrock@patch:@eth-optimism/contracts-bedrock@https%3A//gitpkg.now.sh/ethereum-optimism/optimism/packages/contracts-bedrock?771988b6b0fcf0e80b165dedc57db922c07749e1#~/.yarn/patches/@eth-optimism-contracts-bedrock-https-e91c1d4a6a.patch::version=0.16.2&hash=c6bd93"
-  checksum: 10/64d2180574167a75b77a27c4d11c06935046be046bb423483c888cc0dc280d732ad1fb9dc0a493fd107ab75519abdf93560c59e7f7269708ebb38c3144534b4a
+"@eth-optimism/contracts-bedrock@npm:^0.17.3":
+  version: 0.17.3
+  resolution: "@eth-optimism/contracts-bedrock@npm:0.17.3"
+  checksum: 10/545a4def0b709ae2d0fac4386fa9a939b15fd87cfc653288d130c3426cd59f94472a228a43980aa38cf61f95fe0b23183eae73e70860a952cb7534da48f95fe4
   languageName: node
   linkType: hard
 
