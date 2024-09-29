@@ -7,7 +7,7 @@ import { IOptimismMintableERC721 } from "@eth-optimism/contracts-bedrock/src/uni
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 contract L2AviERC721Bridge is AviERC721Bridge {
-    string public constant version = "1.1.0";
+    string public constant version = "1.2.0";
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(bool isTestMode) {
@@ -18,7 +18,7 @@ contract L2AviERC721Bridge is AviERC721Bridge {
     }
 
     function initialize(address _otherBridge) public initializer {
-        require(_otherBridge != address(0), "L2ERC721Bridge: other bridge cannot be address(0)");
+        require(_otherBridge != address(0), "L2AviERC721Bridge: other bridge cannot be address(0)");
         __SkyBridge_init(_otherBridge);
     }
 
@@ -43,21 +43,21 @@ contract L2AviERC721Bridge is AviERC721Bridge {
         bytes calldata _extraData
     )
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyBackend
     {
-        require(_localToken != address(this), "L2ERC721Bridge: local token cannot be self");
-        require(_to != address(0), "L2ERC721Bridge: cannot transfer to the zero address");
+        require(_localToken != address(this), "L2AviERC721Bridge: local token cannot be self");
+        require(_to != address(0), "L2AviERC721Bridge: cannot transfer to the zero address");
 
         // Note that supportsInterface makes a callback to the _localToken address which is user
         // provided.
         require(
             ERC165Checker.supportsInterface(_localToken, type(IOptimismMintableERC721).interfaceId),
-            "L2ERC721Bridge: local token interface is not compliant"
+            "L2AviERC721Bridge: local token interface is not compliant"
         );
 
         require(
             _remoteToken == IOptimismMintableERC721(_localToken).remoteToken(),
-            "L2ERC721Bridge: wrong remote token for Optimism Mintable ERC721 local token"
+            "L2AviERC721Bridge: wrong remote token for Optimism Mintable ERC721 local token"
         );
 
         // When a deposit is finalized, we give the NFT with the same tokenId to the account
@@ -80,18 +80,18 @@ contract L2AviERC721Bridge is AviERC721Bridge {
         internal
         override
     {
-        require(_remoteToken != address(0), "L2ERC721Bridge: remote token cannot be address(0)");
+        require(_remoteToken != address(0), "L2AviERC721Bridge: remote token cannot be address(0)");
 
         // Check that the withdrawal is being initiated by the NFT owner
         require(
             _from == IOptimismMintableERC721(_localToken).ownerOf(_tokenId),
-            "L2ERC721Bridge: Withdrawal is not being initiated by NFT owner"
+            "L2AviERC721Bridge: Withdrawal is not being initiated by NFT owner"
         );
 
         // Construct calldata for l1ERC721Bridge.finalizeBridgeERC721(_to, _tokenId)
         // slither-disable-next-line reentrancy-events
         address remoteToken = IOptimismMintableERC721(_localToken).remoteToken();
-        require(remoteToken == _remoteToken, "L2ERC721Bridge: remote token does not match given value");
+        require(remoteToken == _remoteToken, "L2AviERC721Bridge: remote token does not match given value");
 
         // When a withdrawal is initiated, we burn the withdrawer's NFT to prevent subsequent L2
         // usage

@@ -22,6 +22,9 @@ abstract contract AviERC721Bridge is AccessControlUpgradeable {
     /// @notice access control role pauser constant.
     bytes32 public constant PAUSER_ROLE = keccak256("aviator.pauser_role");
 
+    /// @notice access control role backend
+    bytes32 public constant BACKEND_ROLE = keccak256("aviator.backend_role");
+
     /**
      * @dev This gap is used to allow further fields on base contracts without causing possible storage clashes.
      */
@@ -92,9 +95,19 @@ abstract contract AviERC721Bridge is AccessControlUpgradeable {
     modifier onlyPauserOrAdmin() {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
-                "AviBridge: function can only be called by pauser or admin role"
+            "AviBridge: function can only be called by pauser or admin role"
         );
+
         _;
+    }
+
+    modifier onlyBackend() {
+        require(
+            hasRole(BACKEND_ROLE, msg.sender),
+            "AviBridge: function can only be called by backend role"
+        );
+
+         _;
     }
 
     /// @param _otherBridge Address of the ERC721 bridge on the other network.
@@ -106,10 +119,10 @@ abstract contract AviERC721Bridge is AccessControlUpgradeable {
 
         // require(_otherBridge != address(0), "AviERC721Bridge: _otherBridge address cannot be zero");
 
+        __AccessControl_init();
+
         OTHER_BRIDGE = _otherBridge;
         flatFee = 0.002 ether;
-
-        __AccessControl_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender); // make the deployer admin
         _numAdmins++;
@@ -179,6 +192,22 @@ abstract contract AviERC721Bridge is AccessControlUpgradeable {
         require(hasRole(PAUSER_ROLE, _pauser), "Address is not a recognized pauser.");
 
         _revokeRole(PAUSER_ROLE, _pauser);
+    }
+
+    /// @notice Add a new backend address to the list of backends.
+    /// @param _backend Address to add as a backend.
+    function addBackend(address _backend) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(!hasRole(BACKEND_ROLE, _backend), "Backend already added.");
+
+        _grantRole(BACKEND_ROLE, _backend);
+    }
+
+    /// @notice Remove an backend from the list of backends.
+    /// @param _backend Address to remove as a backend.
+    function removeBackend(address _backend) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(hasRole(BACKEND_ROLE, _backend), "Address is not a recognized backend.");
+
+        _revokeRole(BACKEND_ROLE, _backend);
     }
 
     /// @notice This function should return true if the contract is paused.

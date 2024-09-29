@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
 
 contract MockMessenger is CrossDomainMessenger {
-    constructor(address otherMessenger, address otherBridge) CrossDomainMessenger(address(otherMessenger)) {
+    constructor(address otherMessenger, address otherBridge) {
         xDomainMsgSender = address(otherBridge);
     }
 
@@ -19,6 +19,10 @@ contract MockMessenger is CrossDomainMessenger {
         emit MockSendMessage(msg.value, _to, _gasLimit, _value, _data);
     }
 
+    function gasPayingToken() internal view override returns (address _addr, uint8 _decimals) {
+        return (address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE), 18);
+    }
+
     function _isOtherMessenger()
         internal
         view
@@ -26,7 +30,7 @@ contract MockMessenger is CrossDomainMessenger {
         override
         returns (bool)
     {
-        return msg.sender == address(OTHER_MESSENGER);
+        return msg.sender == address(OTHER_MESSENGER());
     }
 
     function _isUnsafeTarget(

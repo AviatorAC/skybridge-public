@@ -7,7 +7,7 @@ import { L2AviERC721Bridge } from "src/L2/L2AviERC721Bridge.sol";
 import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/universal/CrossDomainMessenger.sol";
 import { LiquidityPool } from "src/L1/LiquidityPool.sol";
 
-/// @title L1ERC721Bridge
+/// @title L1AviERC721Bridge
 /// @notice The L1 ERC721 bridge is a contract which works together with the L2 ERC721 bridge to
 ///         make it possible to transfer ERC721 tokens from Ethereum to Optimism. This contract
 ///         acts as an escrow for ERC721 tokens deposited into L2.
@@ -18,7 +18,7 @@ contract L1AviERC721Bridge is AviERC721Bridge {
 
     /// @notice Semantic version.
     /// @custom:semver 1.0.0
-    string public constant version = "1.1.0";
+    string public constant version = "1.2.0";
 
     bool internal _isPaused;
 
@@ -38,7 +38,7 @@ contract L1AviERC721Bridge is AviERC721Bridge {
         }
     }
 
-    /// @notice Constructs the L1ERC721Bridge contract.
+    /// @notice Constructs the L1AviERC721Bridge contract.
     /// @param _l1FlatFeeRecipient Address of the flatFeeRecipient.
     function initialize(address payable _l1FlatFeeRecipient) public initializer {
         require(_l1FlatFeeRecipient != address(0), 'L1AviERC721Bridge: _l1FlatFeeRecipient cant be zero address');
@@ -80,15 +80,14 @@ contract L1AviERC721Bridge is AviERC721Bridge {
         bytes calldata _extraData
     )
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyBackend
     {
-        require(paused() == false, "L1ERC721Bridge: paused");
-        require(_localToken != address(this), "L1ERC721Bridge: local token cannot be self");
-        require(_to != address(0), "L1ERC721Bridge: cannot transfer to the zero address");
+        require(_localToken != address(this), "L1AviERC721Bridge: local token cannot be self");
+        require(_to != address(0), "L1AviERC721Bridge: cannot transfer to the zero address");
         // Checks that the L1/L2 NFT pair has a token ID that is escrowed in the L1 Bridge.
         require(
             deposits[_localToken][_remoteToken][_tokenId] == true,
-            "L1ERC721Bridge: Token ID is not escrowed in the L1 Bridge"
+            "L1AviERC721Bridge: Token ID is not escrowed in the L1 Bridge"
         );
 
         // Mark that the token ID for this L1/L2 token pair is no longer escrowed in the L1
@@ -115,11 +114,12 @@ contract L1AviERC721Bridge is AviERC721Bridge {
         internal
         override
     {
-        require(_remoteToken != address(0), "L1ERC721Bridge: remote token cannot be address(0)");
-        require(msg.value == flatFee, "L1ERC721Bridge: bridging ERC721 must include sufficient ETH value");
+        require(paused() == false, "L1AviERC721Bridge: paused");
+        require(_remoteToken != address(0), "L1AviERC721Bridge: remote token cannot be address(0)");
+        require(msg.value == flatFee, "L1AviERC721Bridge: bridging ERC721 must include sufficient ETH value");
 
         (bool sent, ) = payable(flatFeeRecipient).call{value: msg.value}("");
-        require(sent, "L1ERC721Bridge: failed to send ETH to fee recipient");
+        require(sent, "L1AviERC721Bridge: failed to send ETH to fee recipient");
 
         // Lock token into bridge
         deposits[_localToken][_remoteToken][_tokenId] = true;
