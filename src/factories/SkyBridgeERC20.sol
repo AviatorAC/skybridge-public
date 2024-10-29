@@ -1,93 +1,84 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { ILegacyMintableERC20, IOptimismMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/IOptimismMintableERC20.sol";
+import { SkyBridgeERC20Factory } from "./SkyBridgeERC20Factory.sol";
 
 /**
  * @title SkyBridgeERC20
  * @notice SkyBridgeERC20 is adapted from OptimismMintableERC20
  */
-contract SkyBridgeERC20 is ERC20, IOptimismMintableERC20, ILegacyMintableERC20 {
-    /**
-     * @dev Stores the version of the contract like Semantic Versioning (Semver),
-     * and fulfills the same requirements for version tracking.
-     */
+contract SkyBridgeERC20 is ERC20Upgradeable, IOptimismMintableERC20, ILegacyMintableERC20 {
     string public constant version = "1.0.0";
 
-    /**
-     * @notice Address of the corresponding version of this token on the remote chain.
-     */
-    address public immutable REMOTE_TOKEN;
+    /// @notice Address of the corresponding version of this token on the remote chain.
+    address public REMOTE_TOKEN;
 
-    /**
-     * @notice Address of the StandardBridge on this network.
-     */
-    address public immutable BRIDGE;
+    /// @notice Admin factory address
+    SkyBridgeERC20Factory public immutable FACTORY;
 
     /// @notice Decimals of the token
-    uint8 private immutable DECIMALS;
+    uint8 private DECIMALS;
 
-    /**
-     * @notice Emitted whenever tokens are minted for an account.
-     *
-     * @param account Address of the account tokens are being minted for.
-     * @param amount  Amount of tokens minted.
-     */
+    /// @notice Address of the StandardBridge on this network.
+    address public immutable BRIDGE;
+
+    /// @notice Emitted whenever tokens are minted for an account.
     event Mint(address indexed account, uint256 amount);
 
-    /**
-     * @notice Emitted whenever tokens are burned from an account.
-     *
-     * @param account Address of the account tokens are being burned from.
-     * @param amount  Amount of tokens burned.
-     */
+    /// @notice Emitted whenever tokens are burned from an account.
     event Burn(address indexed account, uint256 amount);
 
-    /**
-     * @dev Reverts if the caller is not the StandardBridge contract.
-     */
-    error OnlyBridgeAllowed();
-
-    /// @param _bridge      Address of the L2 standard bridge.
-    /// @param _remoteToken Address of the corresponding L1 token.
-    /// @param _name        ERC20 name.
-    /// @param _symbol      ERC20 symbol.
     constructor(
         address _bridge,
-        address _remoteToken,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals
-    )
-        ERC20(_name, _symbol)
-    {
-        REMOTE_TOKEN = _remoteToken;
+        address _factory
+    ) {
         BRIDGE = _bridge;
+        FACTORY = SkyBridgeERC20Factory(_factory);
+    }
+
+    modifier onlyFactory() {
+        require(msg.sender == address(FACTORY), "SkyBridgeERC20: Only the factory can call this function");
+        _;
+    }
+
+    function initialize(address _remoteToken, string memory _name, string memory _symbol, uint8 _decimals) public onlyFactory initializer {
+        __ERC20_init(_name, _symbol);
+
+        REMOTE_TOKEN = _remoteToken;
         DECIMALS = _decimals;
     }
 
     /**
-     * @notice Allows the StandardBridge on this network to mint tokens.
+     * @notice Allows the authorized bridges (checked via the factory) to mint tokens.
      *
      * @param _to     Address to mint tokens to.
      * @param _amount Amount of tokens to mint.
      */
-    function mint(address _to, uint256 _amount) external virtual override(IOptimismMintableERC20, ILegacyMintableERC20) onlyBridge {
+    function mint(address _to, uint256 _amount) override(ILegacyMintableERC20, IOptimismMintableERC20) external onlyAuthorizedBridge {
         _mint(_to, _amount);
         emit Mint(_to, _amount);
     }
 
     /**
-     * @notice Allows the StandardBridge on this network to burn tokens.
+     * @notice Allows the authorized bridges (checked via the factory) to burn tokens.
      *
      * @param _from   Address to burn tokens from.
      * @param _amount Amount of tokens to burn.
      */
-    function burn(address _from, uint256 _amount) external virtual override(IOptimismMintableERC20, ILegacyMintableERC20) onlyBridge {
+    function burn(address _from, uint256 _amount) override(ILegacyMintableERC20, IOptimismMintableERC20) external onlyAuthorizedBridge {
         _burn(_from, _amount);
         emit Burn(_from, _amount);
+    }
+
+    /**
+     * @notice Modifier to check if the caller is an authorized bridge via the factory.
+     */
+    modifier onlyAuthorizedBridge() {
+        require(FACTORY.isAuthorizedBridge(msg.sender), "SkyBridge: only authorized bridges can mint/burn");
+        _;
     }
 
     /**
@@ -99,11 +90,14 @@ contract SkyBridgeERC20 is ERC20, IOptimismMintableERC20, ILegacyMintableERC20 {
      */
     function supportsInterface(bytes4 _interfaceId) external pure override returns (bool) {
         bytes4 iface1 = type(IERC165).interfaceId;
-        // Interface corresponding to the legacy L2StandardERC20.
         bytes4 iface2 = type(ILegacyMintableERC20).interfaceId;
-        // Interface corresponding to the updated OptimismMintableERC20 (this contract).
         bytes4 iface3 = type(IOptimismMintableERC20).interfaceId;
         return _interfaceId == iface1 || _interfaceId == iface2 || _interfaceId == iface3;
+    }
+
+    /// @dev Returns the number of decimals used for the token.
+    function decimals() public view override returns (uint8) {
+        return DECIMALS;
     }
 
     /**
@@ -116,14 +110,6 @@ contract SkyBridgeERC20 is ERC20, IOptimismMintableERC20, ILegacyMintableERC20 {
 
     /**
      * @custom:legacy
-     * @notice Legacy getter for the bridge. Use BRIDGE going forward.
-     */
-    function l2Bridge() public view returns (address) {
-        return BRIDGE;
-    }
-
-    /**
-     * @custom:legacy
      * @notice Legacy getter for REMOTE_TOKEN.
      */
     function remoteToken() public view returns (address) {
@@ -132,25 +118,10 @@ contract SkyBridgeERC20 is ERC20, IOptimismMintableERC20, ILegacyMintableERC20 {
 
     /**
      * @custom:legacy
-     * @notice Legacy getter for BRIDGE.
+     * @notice Legacy getter for deployerBridge.
      */
     function bridge() public view returns (address) {
         return BRIDGE;
     }
-    /// @dev Returns the number of decimals used to get its user representation.
-    /// For example, if `decimals` equals `2`, a balance of `505` tokens should
-    /// be displayed to a user as `5.05` (`505 / 10 ** 2`).
-    /// NOTE: This information is only used for _display_ purposes: it in
-    /// no way affects any of the arithmetic of the contract, including
-    /// {IERC20-balanceOf} and {IERC20-transfer}.
-
-    function decimals() public view override returns (uint8) {
-        return DECIMALS;
-    }
-
-    /// @notice A modifier that only allows the bridge to call
-    modifier onlyBridge() {
-        require(msg.sender == BRIDGE, "SkyBridgeMintableERC20: only bridge can mint and burn");
-        _;
-    }
 }
+

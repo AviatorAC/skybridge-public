@@ -11,14 +11,13 @@ import { CrossDomainMessenger } from "@eth-optimism/contracts-bedrock/src/univer
 import { OptimismMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/OptimismMintableERC20.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { EIP712Upgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
 /// @custom:upgradeable
 /// @title AviBridge
 /// @notice AviBridge is a base contract for the L1 and L2 standard ERC20 bridges. It handles
 ///         the core bridging logic, including escrowing tokens that are native to the local chain
 ///         and minting/burning tokens that are native to the remote chain.
-abstract contract AviBridge is AccessControlUpgradeable, EIP712Upgradeable {
+abstract contract AviBridge is AccessControlUpgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice Number of admins on the contract.
@@ -48,10 +47,13 @@ abstract contract AviBridge is AccessControlUpgradeable, EIP712Upgradeable {
     /// @notice The flat bridging fee for all deposits. Measured in ETH.
     uint256 public flatFee;
 
+    /// @notice if the bridge is paused
+    bool internal _isPaused;
+
     /**
      * @dev This gap is used to allow further fields on base contracts without causing possible storage clashes.
      */
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 
     /// @notice Emitted when an ETH bridge is initiated to the other chain.
     /// @param from      Address of the sender.
@@ -139,6 +141,24 @@ abstract contract AviBridge is AccessControlUpgradeable, EIP712Upgradeable {
         address executedBy
     );
 
+    /// @notice Emitted whenever the CrossDomainMessenger is changed
+    /// @param previousMessenger Address of previous messenger.
+    /// @param messenger Address of new messenger.
+    /// @param executedBy Address of caller.
+    event CrossDomainMessengerChanged(
+        address previousMessenger,
+        address messenger,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever Bridge paused value is set.
+    /// @param paused     bool of paused value.
+    /// @param executedBy address of calling address.
+    event PausedChanged(
+        bool    paused,
+        address executedBy
+    );
+
     /// @notice Only allow EOAs to call the functions. Note that this is not safe against contracts
     ///         calling code within their constructors, but also doesn't really matter since we're
     ///         just trying to prevent users accidentally depositing with smart contract wallets.
@@ -170,15 +190,24 @@ abstract contract AviBridge is AccessControlUpgradeable, EIP712Upgradeable {
         MESSENGER = CrossDomainMessenger(_messenger);
         OTHER_BRIDGE = AviBridge(_otherBridge);
 
-        __EIP712_init("SkyBridge", "1");
         __AccessControl_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender); // make the deployer admin
+
         _numAdmins = 1;
         flatFee = 0.001 ether;
+        _isPaused = true;
     }
 
-    /// @notice Updates the the address of the other bridge contract.
+    /// @notice Updates the paused status of the bridge
+    /// @param _paused New paused status
+    function setPaused(bool _paused) external onlyPauserOrAdmin {
+        _isPaused = _paused;
+
+        emit PausedChanged(_isPaused, msg.sender);
+    }
+
+    /// @notice Updates the address of the other bridge contract.
     /// @param _otherBridge Address of the other bridge contract.
     function setOtherBridge(address _otherBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_otherBridge != address(0), "AviBridge: _otherBridge address cannot be zero");
@@ -188,6 +217,18 @@ abstract contract AviBridge is AccessControlUpgradeable, EIP712Upgradeable {
         OTHER_BRIDGE = AviBridge(payable(_otherBridge));
 
         emit OtherBridgeChanged(_previousOtherBridge, _otherBridge, msg.sender);
+    }
+
+    /// @notice Updates the address of the CrossDomainMessenger on this layer.
+    /// @param _newMessenger Address of the new CrossDomainMessenger contract on this layer.
+    function setCrossDomainMessenger(address payable _newMessenger) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_newMessenger != address(0), "AviBridge: _newMessenger address cannot be zero");
+
+        address _previousMessenger = address(MESSENGER);
+
+        MESSENGER = CrossDomainMessenger(_newMessenger);
+
+        emit CrossDomainMessengerChanged(_previousMessenger, _newMessenger, msg.sender);
     }
 
     /// @notice Updates the flat fee recipient for all deposits.
@@ -266,10 +307,12 @@ abstract contract AviBridge is AccessControlUpgradeable, EIP712Upgradeable {
     receive() external payable virtual;
 
     /// @notice This function should return true if the contract is paused.
-    ///         On L1 this function will check the SuperchainConfig for its paused status.
-    ///         On L2 this function should be a no-op.
+    /// On L1, this pauses deposits
+    /// On L2, this pauses withdrawals
     /// @return Whether or not the contract is paused.
-    function paused() public view virtual returns (bool);
+    function paused() public view returns (bool) {
+        return _isPaused;
+    }
 
     /// @notice Finalizes an ETH bridge on this chain. Can only be triggered by the other
     ///         AviBridge contract on the remote chain.

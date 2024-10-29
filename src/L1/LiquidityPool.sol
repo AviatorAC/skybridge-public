@@ -12,7 +12,7 @@ contract LiquidityPool is AccessControlUpgradeable {
 
     uint256 internal _numAdmins;
 
-    string public constant version = "1.0.0";
+    string public constant version = "1.0.1";
 
     /**
      * @dev This gap is used to allow further fields on base contracts without causing possible storage clashes.

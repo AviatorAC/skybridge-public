@@ -82,7 +82,7 @@ contract L2AviBridge is AviBridge {
     );
 
     /// @notice Semantic version.
-    string public constant version = "1.1.0";
+    string public constant version = "1.2.0";
 
     /// @notice Mapping that stores deposits for a given pair of local and remote tokens.
     mapping(address => bool) public allowedTokens;
@@ -120,8 +120,6 @@ contract L2AviBridge is AviBridge {
         liquidityPool = _liquidityPool;
         flatFeeRecipient = _l1FeeRecipient;
     }
-
-    function paused() public view override returns (bool) { }
 
     /// @notice Allows EOAs to bridge ETH by sending directly to the bridge.
     receive() external payable override onlyEOA {
@@ -288,6 +286,7 @@ contract L2AviBridge is AviBridge {
         internal
     {
         require(_to != address(0), "L2AviBridge: cannot transfer to the zero address");
+        require(paused() == false, "L2AviBridge: withdrawals are currently paused");
 
         address _trueTo = _to;
 

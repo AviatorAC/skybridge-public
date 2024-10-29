@@ -67,14 +67,6 @@ contract L1AviBridge is AviBridge {
         address executedBy
     );
 
-    /// @notice Emitted whenever Bridge paused value is set.
-    /// @param paused     bool of paused value.
-    /// @param executedBy address of calling address.
-    event PausedChanged(
-        bool    paused,
-        address executedBy
-    );
-
     /// @notice Emitted whenever Avi token address is set.
     /// @param previousAviTokenAddress      address of old avi Token.
     /// @param aviTokenAddress              address of new avi Token.
@@ -82,6 +74,16 @@ contract L1AviBridge is AviBridge {
     event AviTokenAddressChanged(
         address previousAviTokenAddress,
         address aviTokenAddress,
+        address executedBy
+    );
+
+    /// @notice Emitted whenever Optimism Portal is changed.
+    /// @param previousPortal Address of the old Optimism portal that was used.
+    /// @param portal Address of the new Optimism portal to be used.
+    /// @param executedBy Address of the caller.
+    event OptimismPortalChanged(
+        address previousPortal,
+        address portal,
         address executedBy
     );
 
@@ -94,7 +96,8 @@ contract L1AviBridge is AviBridge {
         uint256 amount,
         address l1Token,
         address to,
-        address executedBy
+        address executedBy,
+        uint64 l2_block_number
     );
 
     /// @custom:legacy
@@ -115,13 +118,10 @@ contract L1AviBridge is AviBridge {
     );
 
     /// @notice Semantic version.
-    string public constant version = "1.1.0";
+    string public constant version = "1.4.0";
 
     /// @notice The numerator component of the percentage based briding fee for all deposits.
     uint256 public bridgingFee;
-
-    /// @notice if the bridge is paused
-    bool internal _isPaused;
 
     /// @notice the liquidity pool
     LiquidityPool public LIQUIDITY_POOL;
@@ -134,17 +134,23 @@ contract L1AviBridge is AviBridge {
 
     /// @notice Fastwithdrawal request structure
     struct AviFastWithdrawal {
+        address verifying_contract;
+
         address l1_token;
         address l2_token;
         address from;
         address to;
         uint256 amount;
         uint256 nonce;
+        uint64 l2_block_number;
 
         bytes proof_transaction;
     }
 
-    bytes32 private constant _WITHDRAWAL_TYPEHASH = keccak256("Message(address l1_token,address l2_token,address from,address to,uint256 amount,uint256 nonce,bytes proof_transaction)");
+    bytes32 private constant _WITHDRAWAL_TYPEHASH = keccak256("AviFastWithdrawal(address verifying_contract,address l1_token,address l2_token,address from,address to,uint256 amount,uint256 nonce,uint64 l2_block_number,bytes proof_transaction)");
+    bytes32 private constant _EIP712_DOMAIN = keccak256("EIP712Domain(string name,string version,address verifyingContract)");
+    bytes32 private constant _EIP712_NAME = keccak256("SkyBridge");
+    bytes32 private constant _EIP712_VERSION = keccak256("1");
 
     /// @notice the OptimismPortal contract address
     address payable public optimismPortal;
@@ -180,7 +186,6 @@ contract L1AviBridge is AviBridge {
 
         flatFeeRecipient = _liquidityPool;
 
-        _isPaused = true;
         bridgingFee = 3;
     }
 
@@ -196,14 +201,6 @@ contract L1AviBridge is AviBridge {
         emit BridgingFeeChanged(previousBridgingFee, bridgingFee, msg.sender);
     }
 
-    /// @notice Updates the paused status of the bridge
-    /// @param _paused New paused status
-    function setPaused(bool _paused) external onlyPauserOrAdmin {
-        _isPaused = _paused;
-
-        emit PausedChanged(_isPaused, msg.sender);
-    }
-
     /// @notice Sets the address for the Avi L1 token so that it may avoid fees
     /// @param _token Address of the token contract
     function setAviTokenAddress(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -216,9 +213,16 @@ contract L1AviBridge is AviBridge {
         emit AviTokenAddressChanged(_previousL1AviToken, L1AviToken, msg.sender);
     }
 
-    /// @inheritdoc AviBridge
-    function paused() public view override returns (bool) {
-        return _isPaused;
+    /// Sets the Optimism portal to use for this bridge
+    /// @param _portal Address of the portal contract
+    function setOptimismPortal(address payable _portal) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_portal != address(0), "AviBridge: _portal cannot be zero");
+
+        address _previousPortal = optimismPortal;
+
+        optimismPortal = _portal;
+
+        emit OptimismPortalChanged(_previousPortal, optimismPortal, msg.sender);
     }
 
     /// @notice Allows EOAs to bridge ETH by sending directly to the bridge.
@@ -351,20 +355,50 @@ contract L1AviBridge is AviBridge {
         external
         payable
     {
+        require(paused() == false, "L1AviBridge: fast withdrawals are currently paused");
         require(backendUser != address(0), "L1AviBridge: invalid backend user");
 
         (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
-        bytes32 structHash = keccak256(abi.encode(_WITHDRAWAL_TYPEHASH, _txn.l1_token, _txn.l2_token, _txn.from, _txn.to, _txn.amount, _txn.nonce, _txn.proof_transaction));
-        address signer = ECDSA.recover(_hashTypedDataV4(structHash), v, r, s);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _WITHDRAWAL_TYPEHASH,
+                _txn.verifying_contract,
+                _txn.l1_token,
+                _txn.l2_token,
+                _txn.from,
+                _txn.to,
+                _txn.amount,
+                _txn.nonce,
+                _txn.l2_block_number,
+                keccak256(_txn.proof_transaction)
+            )
+        );
+
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                _EIP712_DOMAIN,
+                _EIP712_NAME,
+                _EIP712_VERSION,
+                _txn.verifying_contract
+            )
+        );
+
+        address signer = ECDSA.recover(
+            ECDSA.toTypedDataHash(domainSeparator, structHash),
+            v,
+            r,
+            s
+        );
 
         require(signer == backendUser, "invalid signature");
-        require(fastBridgeNonces[_txn.to] == _txn.nonce, "invalid nonce");
+        require(fastBridgeNonces[_txn.from] == _txn.nonce, "invalid nonce");
         require(msg.value == flatFee, "AviBridge: insufficient value for fee");
 
         (bool feeSent, ) = address(flatFeeRecipient).call{value: flatFee}("");
         require(feeSent, "AviBridge: failed to send fee");
 
-        fastBridgeNonces[_txn.to] += 1;
+        fastBridgeNonces[_txn.from] += 1;
 
         // Transfer the tokens, ETH if the l1_token is address(0)
         if (_txn.l1_token == address(0)) {
@@ -374,9 +408,9 @@ contract L1AviBridge is AviBridge {
         }
 
         bool success = SafeCall.call(optimismPortal, gasleft(), 0, _txn.proof_transaction);
-        require(success, "failed to call optimism portal");
+        require(success, "AviBridge: failed to prove transaction to Optimism Portal");
 
-        emit FastWithdraw(_txn.amount, _txn.l1_token, _txn.to, msg.sender);
+        emit FastWithdraw(_txn.amount, _txn.l1_token, _txn.to, msg.sender, _txn.l2_block_number);
     }
 
     /// @notice Internal function for initiating an ETH deposit.
@@ -385,11 +419,20 @@ contract L1AviBridge is AviBridge {
     /// @param _minGasLimit Minimum gas limit for the deposit message on L2.
     /// @param _extraData   Optional data to forward to L2.
     function _initiateETHDeposit(address _from, address _to, uint32 _minGasLimit, bytes memory _extraData) internal {
-        uint256 bridgeFee = (msg.value * bridgingFee) / 1000;
+        require(paused() == false, "L1AviBridge: deposits are currently paused");
 
-        // Calculate the total fee, including the flat fee
-        uint256 totalFee = bridgeFee + flatFee;
-        require(msg.value >= totalFee, "AviBridge: insufficient ETH value");
+        // At least flatFee is required
+        require(msg.value > flatFee, "AviBridge: insufficient ETH value");
+
+        // Calculate the bridgingFee for the remainder
+        uint256 remainingValue = msg.value - flatFee;
+        uint256 bridgeFee = (remainingValue * bridgingFee) / 1000;
+
+        // Must send in total at least this much ETH to deposit
+        uint256 totalFee = flatFee + bridgeFee;
+
+        // We check that the user sent more than the total fee so they bridge *something*
+        require(msg.value > totalFee, "AviBridge: insufficient ETH value");
 
         uint256 _amount = msg.value - totalFee;
 
@@ -423,6 +466,8 @@ contract L1AviBridge is AviBridge {
     )
         internal
     {
+        require(paused() == false, "L1AviBridge: deposits are currently paused");
+
         require(msg.value == flatFee, "AviBridge: bridging ERC20 must include sufficient ETH value");
 
         (bool sent, ) = payable(flatFeeRecipient).call{value: msg.value}("");

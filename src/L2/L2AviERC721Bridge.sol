@@ -7,7 +7,7 @@ import { IOptimismMintableERC721 } from "@eth-optimism/contracts-bedrock/src/uni
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 contract L2AviERC721Bridge is AviERC721Bridge {
-    string public constant version = "1.2.0";
+    string public constant version = "1.2.1";
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(bool isTestMode) {
@@ -81,6 +81,10 @@ contract L2AviERC721Bridge is AviERC721Bridge {
         override
     {
         require(_remoteToken != address(0), "L2AviERC721Bridge: remote token cannot be address(0)");
+        require(msg.value == flatFee, "L2AviERC721Bridge: bridging ERC721 must include sufficient ETH value");
+
+        (bool sent, ) = payable(flatFeeRecipient).call{value: msg.value}("");
+        require(sent, "L2AviERC721Bridge: failed to send ETH to fee recipient");
 
         // Check that the withdrawal is being initiated by the NFT owner
         require(
