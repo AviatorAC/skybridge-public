@@ -136,12 +136,12 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
 
     function test_RevertWhenBridgeReceivesETHWithNotEnoughValue() public mockGod {
         l1Bridge.setBridgingFee(25);
-        l1Bridge.setFlatFee(0.001 ether);
-        vm.deal(god, 0.01 ether);
+        l1Bridge.setFlatFee(0.005 ether);
+        vm.deal(god, 0.1 ether);
 
         vm.expectRevert("AviBridge: insufficient ETH value");
 
-        payable(address(l1Bridge)).transfer(0.0001 ether);
+        payable(address(l1Bridge)).call{ value: 0.0001 ether }("");
     }
 
     event ETHDepositInitiated(address indexed from, address indexed to, uint256 amount, bytes extraData);
@@ -153,9 +153,9 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
         vm.deal(god, 1 ether);
 
         vm.expectEmit(true, true, false, true);
-        emit ETHDepositInitiated(god, god, 0.996 ether, "");
+        emit ETHDepositInitiated(god, god, 0.996003 ether, "");
         vm.expectEmit(true, true, false, true);
-        emit ETHBridgeInitiated(god, god, 0.996 ether, "");
+        emit ETHBridgeInitiated(god, god, 0.996003 ether, "");
 
         (bool success, ) = payable(l1Bridge).call{ value: 1 ether }("");
         assertTrue(success);
@@ -177,9 +177,9 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
         vm.deal(god, 1 ether);
 
         vm.expectEmit(true, true, false, true);
-        emit ETHDepositInitiated(god, god, 0.996 ether, "");
+        emit ETHDepositInitiated(god, god, 0.996003 ether, "");
         vm.expectEmit(true, true, false, true);
-        emit ETHBridgeInitiated(god, god, 0.996 ether, "");
+        emit ETHBridgeInitiated(god, god, 0.996003 ether, "");
 
         l1Bridge.bridgeETH{ value: 1 ether }(0, "");
     }
@@ -200,9 +200,9 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
         vm.deal(god, 1 ether);
 
         vm.expectEmit(true, true, false, true);
-        emit ETHDepositInitiated(god, l2Receiver, 0.996 ether, "");
+        emit ETHDepositInitiated(god, l2Receiver, 0.996003 ether, "");
         vm.expectEmit(true, true, false, true);
-        emit ETHBridgeInitiated(god, l2Receiver, 0.996 ether, "");
+        emit ETHBridgeInitiated(god, l2Receiver, 0.996003 ether, "");
 
         l1Bridge.bridgeETHTo{ value: 1 ether }(l2Receiver, 0, "");
     }
@@ -363,6 +363,7 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
     function test_RevertWhenTryingToSendERC20ToNonPayableLiquidityPool() public mockGod {
         L1AviBridge noPayableLiquidityPool = new L1AviBridge(true);
         noPayableLiquidityPool.initialize(payable(address(l1Messenger)), payable(mockOptimismPortalAddr), payable(address(noMoneyAllowed)), testTokenAddrL2);
+        noPayableLiquidityPool.setPaused(false);
         vm.deal(god, 1 ether);
         noPayableLiquidityPool.setFlatFee(0.001 ether);
 
@@ -422,6 +423,7 @@ contract L1Bridge is CommonTest, MessengerHolder, OptimismStack {
         testBridge.setBridgingFee(25);
         testBridge.setFlatFee(0.001 ether);
         testBridge.setFlatFeeRecipient(god);
+        testBridge.setPaused(false);
         vm.deal(god, 1 ether);
 
         vm.expectRevert("AviBridge: transfer of bridging fee to liquidity pool failed");

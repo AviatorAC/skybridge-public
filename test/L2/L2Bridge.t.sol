@@ -15,6 +15,7 @@ contract L2Bridge is CommonTest, MessengerHolder {
     constructor() mockGod {
         l2Bridge = new L2AviBridge(true);
         l2Bridge.initialize(payable(address(l2Messenger)), payable(AviPredeploys.L1_STANDARD_BRIDGE), payable(liquidityPool), payable(liquidityPool));
+        l2Bridge.setPaused(false);
 
         // Make the bridge an admin of the liquidity pool
         liquidityPool.addAdmin(address(l2Bridge));
@@ -80,6 +81,24 @@ contract L2Bridge is CommonTest, MessengerHolder {
             god,
             god,
             1 ether,
+            ""
+        );
+
+        (bool success, ) = payable(address(l2Bridge)).call{ value: 1 ether }("");
+        assertTrue(success);
+    }
+
+    function test_WithdrawalWorksWithFlatFee() public mockGod {
+        vm.deal(god, 1 ether);
+        l2Bridge.setFlatFee(0.001 ether);
+
+        vm.expectEmit(true, true, false, true);
+        emit WithdrawalInitiated(
+            address(0),
+            Predeploys.LEGACY_ERC20_ETH,
+            god,
+            god,
+            0.999 ether,
             ""
         );
 

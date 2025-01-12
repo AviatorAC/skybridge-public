@@ -11,7 +11,8 @@ contract SkyBridgeERC20FactoryTest is CommonTest {
 
 	constructor() mockGod {
 		address bridge = makeAddr("bridge");
-		factory = new SkyBridgeERC20Factory(bridge, address(god));
+		factory = new SkyBridgeERC20Factory(true);
+		factory.initialize(bridge, address(god));
 	}
 
 	function test_CreatesTokenSuccessfully() public mockGod {

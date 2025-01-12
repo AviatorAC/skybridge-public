@@ -49,7 +49,13 @@ contract SkyBridgeERC20Factory is AccessControlUpgradeable {
         address executedBy
     );
 
-    constructor() {}
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(bool isTestMode) {
+        // isTestMode is used to disable the disabling of the initializers when running tests
+        if (!isTestMode) {
+            _disableInitializers();
+        }
+    }
 
     /**
      * @notice Constructor sets the initial bridge, admin, and fee recipient.

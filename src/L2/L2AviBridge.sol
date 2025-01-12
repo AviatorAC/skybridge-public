@@ -82,7 +82,7 @@ contract L2AviBridge is AviBridge {
     );
 
     /// @notice Semantic version.
-    string public constant version = "1.2.0";
+    string public constant version = "1.2.1";
 
     /// @notice Mapping that stores deposits for a given pair of local and remote tokens.
     mapping(address => bool) public allowedTokens;
@@ -309,6 +309,11 @@ contract L2AviBridge is AviBridge {
         else {
             // For ETH, we need to include the flat fee in the required total
             if (_l2Token == Predeploys.LEGACY_ERC20_ETH) {
+                // receive() call
+                if (msg.value == _amount && _amount > flatFee) {
+                    _amount -= flatFee;
+                }
+
                 uint256 requiredTotal = _amount + flatFee;
                 require(msg.value == requiredTotal, "L2AviBridge: insufficient ETH value");
             }

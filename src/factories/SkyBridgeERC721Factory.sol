@@ -65,7 +65,13 @@ contract SkyBridgeERC721Factory is AccessControlUpgradeable {
     /// @custom:semver 1.0.0
     string public constant version = "1.0.0";
 
-    constructor() {}
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(bool isTestMode) {
+        // isTestMode is used to disable the disabling of the initializers when running tests
+        if (!isTestMode) {
+            _disableInitializers();
+        }
+    }
 
     /// @param _bridge Address of the ERC721 bridge on this network.
     /// @param _remoteChainId Chain ID for the remote network.

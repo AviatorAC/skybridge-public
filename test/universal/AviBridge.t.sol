@@ -12,22 +12,12 @@ import "forge-std/console2.sol";
 import { IOptimismMintableERC20, ILegacyMintableERC20 } from "@eth-optimism/contracts-bedrock/src/universal/IOptimismMintableERC20.sol";
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
-contract RawBridge is AviBridge { 
+contract RawBridge is AviBridge {
     function initialize(address payable messenger, address payable otherBridge) public initializer {
         __SkyBridge_init(messenger, otherBridge);
     }
 
     receive() external payable virtual override {}
-
-    bool actuallyPaused;
-
-    function paused() public view override returns (bool) {
-        return actuallyPaused;
-    }
-
-    function setPaused(bool _paused) public {
-        actuallyPaused = _paused;
-    }
 }
 
 contract AviBridgeTest is CommonTest, MessengerHolder {
@@ -37,6 +27,7 @@ contract AviBridgeTest is CommonTest, MessengerHolder {
     constructor() mockGod {
         bridge = new RawBridge();
         bridge.initialize(payable(AviPredeploys.L1_CROSS_DOMAIN_MESSENGER), payable(address(AviPredeploys.L2_STANDARD_BRIDGE)));
+        bridge.setPaused(false);
         noMoneyAllowed = new NoMoneyAllowed();
     }
 

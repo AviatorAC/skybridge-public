@@ -118,7 +118,7 @@ contract L1AviBridge is AviBridge {
     );
 
     /// @notice Semantic version.
-    string public constant version = "1.4.0";
+    string public constant version = "1.5.0";
 
     /// @notice The numerator component of the percentage based briding fee for all deposits.
     uint256 public bridgingFee;
@@ -155,6 +155,14 @@ contract L1AviBridge is AviBridge {
     /// @notice the OptimismPortal contract address
     address payable public optimismPortal;
 
+    event SupersonicFeeChanged(
+        uint256 previousFee,
+        uint256 fee,
+        address executedBy
+    );
+
+    uint256 public supersonicFee;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(bool isTestMode) {
         // isTestMode is used to disable the disabling of the initializers when running tests
@@ -187,6 +195,8 @@ contract L1AviBridge is AviBridge {
         flatFeeRecipient = _liquidityPool;
 
         bridgingFee = 3;
+
+        supersonicFee = 0.005 ether;
     }
 
     /// @notice Updates the numerator component of the percentage based bridging fee for all deposits.
@@ -199,6 +209,17 @@ contract L1AviBridge is AviBridge {
         bridgingFee = _fee;
 
         emit BridgingFeeChanged(previousBridgingFee, bridgingFee, msg.sender);
+    }
+
+    /// @notice Updates the supersonic fee for all withdrawals.
+    /// @param _fee New supersonic fee.
+    function setSupersonicFee(uint256 _fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_fee <= 0.005 ether, "AviBridge: _fee must be less than or equal to 0.005 ether");
+
+        uint256 previousSupersonicFee = supersonicFee;
+        supersonicFee = _fee;
+
+        emit SupersonicFeeChanged(previousSupersonicFee, supersonicFee, msg.sender);
     }
 
     /// @notice Sets the address for the Avi L1 token so that it may avoid fees
@@ -357,6 +378,9 @@ contract L1AviBridge is AviBridge {
     {
         require(paused() == false, "L1AviBridge: fast withdrawals are currently paused");
         require(backendUser != address(0), "L1AviBridge: invalid backend user");
+        // Temporarily needed until we configure the field. The alternative would have been to set it to the initial value of
+        // 0.005 ETH, but this feels safer
+        require(supersonicFee > 0, "L1AviBridge: fast withdrawals are not fully configured");
 
         (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
 
@@ -393,9 +417,10 @@ contract L1AviBridge is AviBridge {
 
         require(signer == backendUser, "invalid signature");
         require(fastBridgeNonces[_txn.from] == _txn.nonce, "invalid nonce");
-        require(msg.value == flatFee, "AviBridge: insufficient value for fee");
 
-        (bool feeSent, ) = address(flatFeeRecipient).call{value: flatFee}("");
+        require(msg.value == supersonicFee, "AviBridge: insufficient value for fee");
+
+        (bool feeSent, ) = address(flatFeeRecipient).call{value: supersonicFee}("");
         require(feeSent, "AviBridge: failed to send fee");
 
         fastBridgeNonces[_txn.from] += 1;

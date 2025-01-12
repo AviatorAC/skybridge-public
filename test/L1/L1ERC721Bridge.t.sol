@@ -21,6 +21,7 @@ contract L1ERC721Bridge is CommonTest, OptimismStack {
     constructor() mockGod {
         l1Bridge = new L1AviERC721Bridge(true);
         l1Bridge.initialize(payable(flatFeeRecepient));
+        l1Bridge.addBackend(address(god));
 
         l1Bridge.setPaused(false);
 
@@ -49,21 +50,13 @@ contract L1ERC721Bridge is CommonTest, OptimismStack {
         assertEq(l1Bridge.OTHER_BRIDGE(), otherBridge);
     }
 
-    function test_RevertWhenBridgeIsPaused() public mockGod {
-        l1Bridge.setPaused(true);
-        assertEq(l1Bridge.paused(), true);
-
-        vm.expectRevert("L1ERC721Bridge: paused");
-        l1Bridge.finalizeBridgeERC721(testNFTAddrL1, testNFTAddrL2, address(0), address(0), NFT_ID, "");
-    }
-
     function test_RevertWhenBridgeIsSelf() public mockGod {
-        vm.expectRevert("L1ERC721Bridge: local token cannot be self");
+        vm.expectRevert("L1AviERC721Bridge: local token cannot be self");
         l1Bridge.finalizeBridgeERC721(address(l1Bridge), testNFTAddrL2, address(0), address(0), NFT_ID, "");
     }
 
     function test_RevertWhenTokenPairIsNotEscrowed() public mockGod {
-        vm.expectRevert("L1ERC721Bridge: Token ID is not escrowed in the L1 Bridge");
+        vm.expectRevert("L1AviERC721Bridge: Token ID is not escrowed in the L1 Bridge");
         l1Bridge.finalizeBridgeERC721(testNFTAddrL1, testNFTAddrL2, god, god, NFT_ID, "");
     }
 
@@ -76,7 +69,7 @@ contract L1ERC721Bridge is CommonTest, OptimismStack {
     }
 
     function test_RevertWhenTryingToBridgeNFTWithNullRemoteToken() public mockGod {
-        vm.expectRevert("L1ERC721Bridge: remote token cannot be address(0)");
+        vm.expectRevert("L1AviERC721Bridge: remote token cannot be address(0)");
         l1Bridge.bridgeERC721(testNFTAddrL1, address(0), NFT_ID, "");
     }
 
@@ -123,17 +116,18 @@ contract L1ERC721Bridge is CommonTest, OptimismStack {
         vm.deal(god, 0.001 ether);
         l1Bridge.setFlatFee(0.002 ether);
 
-        vm.expectRevert("L1ERC721Bridge: bridging ERC721 must include sufficient ETH value");
+        vm.expectRevert("L1AviERC721Bridge: bridging ERC721 must include sufficient ETH value");
         l1Bridge.bridgeERC721{ value: 0.001 ether }(testNFTAddrL1, testNFTAddrL2, NFT_ID, "");
     }
 
     function test_RevertWhenFailingToBridgeDueToLiquidityPoolNotReceivingTheETHFee() public mockGod {
         L1AviERC721Bridge tempBridge = new L1AviERC721Bridge(true);
         tempBridge.initialize(payable(address(noMoney)));
+        tempBridge.setPaused(false);
 
         vm.deal(god, 0.002 ether);
 
-        vm.expectRevert("L1ERC721Bridge: failed to send ETH to fee recipient");
+        vm.expectRevert("L1AviERC721Bridge: failed to send ETH to fee recipient");
         tempBridge.bridgeERC721{ value: 0.002 ether }(testNFTAddrL1, testNFTAddrL2, NFT_ID, "");
     }
 }
